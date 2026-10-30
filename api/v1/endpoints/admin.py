@@ -23,7 +23,7 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
     2. Neon Database 'users' table where user_type is 'admin'
     """
     clean_username = (data.username or "").strip()
-    clean_password = (data.password or "")
+    clean_password = (data.password or "").strip()
 
     if not clean_username or not clean_password:
         raise HTTPException(
@@ -32,8 +32,8 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
         )
 
     # 1. Authenticate against Environment Variables (configured in Vercel or .env)
-    env_admin_user = os.getenv("ADMIN_USERNAME", "admin").strip()
-    env_admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
+    env_admin_user = (os.getenv("ADMIN_USERNAME") or "admin").strip().strip('"\'')
+    env_admin_pass = (os.getenv("ADMIN_PASSWORD") or "admin123").strip().strip('"\'')
 
     if env_admin_pass:
         is_user_match = secrets.compare_digest(clean_username.lower(), env_admin_user.lower())

@@ -5,7 +5,9 @@
 
 // Automatic origin detection (works seamlessly on localhost and production hosting)
 const API_BASE = (typeof window !== 'undefined' && window.location.origin && window.location.protocol.startsWith('http'))
-  ? window.location.origin
+  ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port && !['8000'].includes(window.location.port)
+    ? 'http://127.0.0.1:8000'
+    : window.location.origin
   : 'http://127.0.0.1:8000';
 
 /**
