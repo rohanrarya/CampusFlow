@@ -10,6 +10,7 @@ from core.config import CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_CL
 from core.security import decode_access_token
 from services.ai_service import analyze_complaint, moderate_image, find_department
 from services.ticket_service import create_ticket, get_ticket_by_submission_id
+from services.spreadsheet_service import get_member_by_college_id
 
 router = APIRouter()
 
@@ -40,24 +41,44 @@ async def create_complaint(
     photo: UploadFile | None = File(None),
     image_url: str | None = Form(None),
     submission_id: str = Form(...),
+    college_id: str | None = Form(None),
     token: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
-    # Verify user token if provided or from Authorization header
-    user_token = token
-    if not user_token:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            user_token = auth_header.replace("Bearer ", "").strip()
-
     submitted_by = "Campus Member"
     user_college_id = None
 
-    if user_token:
-        payload = decode_access_token(user_token)
-        if payload:
-            submitted_by = payload.get("name", "Campus Member")
-            user_college_id = payload.get("sub")
+    # Priority 1: Direct College ID verification from admin spreadsheet / roster
+    if college_id and college_id.strip():
+        clean_cid = college_id.strip()
+        member = get_member_by_college_id(db, clean_cid)
+        if not member:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Verification failed: College ID '{clean_cid}' is not registered in the campus directory."
+            )
+        submitted_by = member.name
+        user_college_id = member.college_id
+
+    # Priority 2: Fallback to token if provided
+    elif token or request.headers.get("Authorization"):
+        user_token = token
+        if not user_token:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                user_token = auth_header.replace("Bearer ", "").strip()
+        if user_token:
+            payload = decode_access_token(user_token)
+            if payload:
+                submitted_by = payload.get("name", "Campus Member")
+                user_college_id = payload.get("sub")
+
+    # If neither College ID nor token was provided, reject submission
+    if not user_college_id:
+        raise HTTPException(
+            status_code=400,
+            detail="College ID is required to submit a complaint. Please enter your registered ID."
+        )
 
     exist_ticket = get_ticket_by_submission_id(db, submission_id)
     if exist_ticket:

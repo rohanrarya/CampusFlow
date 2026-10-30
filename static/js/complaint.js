@@ -346,6 +346,118 @@ function showPhotoPreview(base64) {
   showToast('Photo attached! It will be uploaded with your complaint.', 'info', 3000);
 }
 
+
+/* ── Verified College Member State ────────────────────────── */
+let verifiedMember = null;
+
+function initCollegeIdVerification() {
+  const idInput = document.getElementById('college-id-input');
+  const verifyBtn = document.getElementById('id-verify-btn');
+  const btnText = document.getElementById('id-verify-btn-text');
+  const box = document.getElementById('college-id-box');
+  const resultWrap = document.getElementById('verified-result-wrap');
+  const errorWrap = document.getElementById('id-error-wrap');
+  const errorText = document.getElementById('id-error-text');
+  const memberName = document.getElementById('verified-member-name');
+  const memberRole = document.getElementById('verified-member-role');
+  const memberDept = document.getElementById('verified-member-dept');
+  const submitBtn = document.getElementById('submit-btn');
+
+  if (!idInput) return;
+
+  if (submitBtn && !verifiedMember) {
+    submitBtn.style.opacity = '0.7';
+  }
+
+  let debounceTimer = null;
+
+  async function performVerification(idVal) {
+    const cleanId = (idVal || '').trim();
+    if (!cleanId) {
+      if (box) box.classList.remove('verified', 'error');
+      if (resultWrap) resultWrap.style.display = 'none';
+      if (errorWrap) errorWrap.style.display = 'none';
+      verifiedMember = null;
+      if (submitBtn) submitBtn.style.opacity = '0.7';
+      return;
+    }
+
+    if (btnText) btnText.innerHTML = '<span class="btn-spinner"></span> Checking…';
+    if (verifyBtn) verifyBtn.disabled = true;
+
+    try {
+      const res = await verifyMemberCollegeId(cleanId);
+      if (res && res.verified && res.member) {
+        verifiedMember = res.member;
+        if (box) { box.classList.add('verified'); box.classList.remove('error'); }
+        if (resultWrap) resultWrap.style.display = 'block';
+        if (errorWrap) errorWrap.style.display = 'none';
+        if (memberName) memberName.textContent = res.member.name;
+        if (memberDept) memberDept.textContent = res.member.department || 'Campus Member';
+        if (memberRole) memberRole.textContent = (res.member.role || 'STUDENT').toUpperCase();
+        if (submitBtn) { submitBtn.style.opacity = '1'; }
+
+        try { localStorage.setItem('cf_verified_member', JSON.stringify(res.member)); } catch (e) {}
+      } else {
+        verifiedMember = null;
+        if (box) { box.classList.add('error'); box.classList.remove('verified'); }
+        if (resultWrap) resultWrap.style.display = 'none';
+        if (errorWrap) errorWrap.style.display = 'flex';
+        if (errorText) errorText.textContent = res.message || `College ID '${cleanId}' not found in campus directory.`;
+        if (submitBtn) { submitBtn.style.opacity = '0.7'; }
+        try { localStorage.removeItem('cf_verified_member'); } catch (e) {}
+      }
+    } catch (err) {
+      console.error('ID verification error:', err);
+      verifiedMember = null;
+      if (box) { box.classList.add('error'); box.classList.remove('verified'); }
+      if (resultWrap) resultWrap.style.display = 'none';
+      if (errorWrap) errorWrap.style.display = 'flex';
+      if (errorText) errorText.textContent = 'Could not verify ID. Please try again.';
+    } finally {
+      if (btnText) btnText.textContent = 'Verify';
+      if (verifyBtn) verifyBtn.disabled = false;
+    }
+  }
+
+  idInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const val = idInput.value.trim();
+    if (val.length >= 3) {
+      debounceTimer = setTimeout(() => performVerification(val), 400);
+    } else {
+      if (box) box.classList.remove('verified', 'error');
+      if (resultWrap) resultWrap.style.display = 'none';
+      if (errorWrap) errorWrap.style.display = 'none';
+      verifiedMember = null;
+    }
+  });
+
+  if (verifyBtn) {
+    verifyBtn.addEventListener('click', () => {
+      performVerification(idInput.value.trim());
+    });
+  }
+
+  idInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      performVerification(idInput.value.trim());
+    }
+  });
+
+  try {
+    const saved = localStorage.getItem('cf_verified_member');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.college_id) {
+        idInput.value = parsed.college_id;
+        performVerification(parsed.college_id);
+      }
+    }
+  } catch (e) {}
+}
+
 /* ── Form Submit Handler ──────────────────────────────────── */
 function initComplaintForm() {
   const form      = document.getElementById('complaint-form');
@@ -371,9 +483,13 @@ function initComplaintForm() {
 
     if (!validateForm(textarea)) return;
 
-    if (typeof isUserLoggedIn === 'function' && !isUserLoggedIn()) {
-      showToast('Please sign in with your College ID before submitting a complaint.', 'error', 5000);
-      if (typeof initAuthGate === 'function') initAuthGate();
+    if (!verifiedMember || !verifiedMember.college_id) {
+      showToast('Please enter and verify your College ID above before submitting.', 'error', 5000);
+      const idInput = document.getElementById('college-id-input');
+      if (idInput) {
+        idInput.focus();
+        idInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
 
@@ -398,7 +514,7 @@ function initComplaintForm() {
         if (btnText) {
           btnText.innerHTML = `<span class="btn-spinner"></span> ${status}`;
         }
-      });
+      }, verifiedMember.college_id);
       displayResult(ticket);
       showToast('Complaint submitted successfully!', 'success');
 
@@ -668,6 +784,7 @@ function escapeHtml(str) {
 /* ── Boot ─────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   initComplaintForm();
+  initCollegeIdVerification();
   initCameraFeature();
   loadHomeStats();
   fetchAndRenderHomeComplaints();

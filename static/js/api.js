@@ -73,9 +73,10 @@ async function uploadDirectToCloudinary(photoBlob) {
  * @param {string} text - The complaint description text.
  * @param {Blob|File|string|null} photo - Optional photo (Blob, File, or Base64 Data URL).
  * @param {Function|null} onStatusUpdate - Status callback during upload
+ * @param {string|null} collegeId - Verified College ID of the student/faculty
  * @returns {Promise<Object>} Ticket object
  */
-async function submitComplaint(text, photo = null, onStatusUpdate = null) {
+async function submitComplaint(text, photo = null, onStatusUpdate = null, collegeId = null) {
   let photoBlob = null;
   if (photo) {
     if (photo instanceof Blob || (typeof File !== 'undefined' && photo instanceof File)) {
@@ -101,13 +102,17 @@ async function submitComplaint(text, photo = null, onStatusUpdate = null) {
   formData.append('message', text);
   formData.append('submission_id', generateSubmissionId());
 
+  if (collegeId) {
+    formData.append('college_id', collegeId);
+  }
+
   if (imageUrl) {
     formData.append('image_url', imageUrl);
   } else if (photoBlob) {
     formData.append('photo', photoBlob, 'complaint_photo.jpg');
   }
 
-  // Attach logged-in user session token if present
+  // Attach session token if present
   const userToken = (typeof localStorage !== 'undefined') ? localStorage.getItem('cf_user_token') : null;
   if (userToken) {
     formData.append('token', userToken);
@@ -131,7 +136,6 @@ async function submitComplaint(text, photo = null, onStatusUpdate = null) {
   }
 
   const data = await response.json();
-  // Backend returns { message, complaint, analysis, department, ticket }
   if (data.ticket) {
     return {
       ...data.ticket,
@@ -144,9 +148,6 @@ async function submitComplaint(text, photo = null, onStatusUpdate = null) {
 
 /**
  * Normalize UTC ISO date strings from backend.
- * Ensures naive UTC timestamps (e.g. "2026-10-08T21:00:28.112339")
- * are correctly identified as UTC by appending 'Z', preventing
- * timezone conversion errors in browsers.
  * @param {string|null} dateStr
  * @returns {string|null}
  */
@@ -249,10 +250,9 @@ async function updateTicketStatus(id, status) {
 }
 
 /**
- * Resolve a specific ticket (shortcut for updateTicketStatus).
- * PATCH /tickets/:ticket_id
- * @param {string|number} id - The ticket_id (or ID) to resolve.
- * @returns {Promise<Object>} Updated ticket response.
+ * Resolve a specific ticket.
+ * @param {string|number} id
+ * @returns {Promise<Object>}
  */
 async function resolveTicket(id) {
   return updateTicketStatus(id, 'Resolved');
@@ -272,11 +272,10 @@ async function checkBackendHealth() {
 }
 
 /**
- * Authenticate an admin user with the backend REST API.
- * Validates against environment variables set in Vercel or database admin users.
- * @param {string} username - Admin username.
- * @param {string} password - Admin password.
- * @returns {Promise<Object>} Auth response: { token, username }
+ * Authenticate an admin user.
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<Object>}
  */
 async function adminLogin(username, password) {
   if (!username || !password) {
@@ -307,75 +306,199 @@ async function adminLogin(username, password) {
   };
 }
 
-/**
- * Register a genuine college student/faculty member.
- * POST /auth/register
- * @param {Object} userData - { college_id, name, email, user_type, password }
- * @returns {Promise<Object>} { message, user, token }
- */
-async function registerCampusUser(userData) {
-  const response = await fetch(`${API_BASE}/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(userData),
-  });
+/* ─────────────────────────────────────────────────────────── */
+/*  Spreadsheet & Campus Member Verification Functions        */
+/* ─────────────────────────────────────────────────────────── */
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const msg = errorData.detail || errorData.message || `Registration error: ${response.status}`;
-    throw new Error(msg);
+/**
+ * Verify a student or faculty member's College ID against the spreadsheet roster.
+ * GET /members/verify/:college_id
+ * @param {string} collegeId
+ * @returns {Promise<Object>} { verified: boolean, member?: Object, message?: string }
+ */
+async function verifyMemberCollegeId(collegeId) {
+  const cleanId = (collegeId || '').trim();
+  if (!cleanId) {
+    return { verified: false, message: 'Please enter a College ID.' };
   }
 
-  return response.json();
-}
-
-/**
- * Authenticate student/faculty with College ID and password.
- * POST /auth/login
- * @param {string} collegeId - College ID or email
- * @param {string} password - User password
- * @returns {Promise<Object>} { message, user, token }
- */
-async function loginCampusUser(collegeId, password) {
-  const response = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ college_id: collegeId, password: password }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const msg = errorData.detail || errorData.message || `Login error: ${response.status}`;
-    throw new Error(msg);
-  }
-
-  return response.json();
-}
-
-/**
- * Fetch currently logged in user profile using token.
- * GET /auth/me
- * @returns {Promise<Object>} { user }
- */
-async function getCampusCurrentUser() {
-  const token = localStorage.getItem('cf_user_token');
-  if (!token) return null;
-
-  const response = await fetch(`${API_BASE}/auth/me`, {
+  const response = await fetch(`${API_BASE}/members/verify/${encodeURIComponent(cleanId)}`, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
     },
   });
 
   if (!response.ok) {
-    localStorage.removeItem('cf_user_token');
-    localStorage.removeItem('cf_user_data');
-    return null;
+    const err = await response.json().catch(() => ({}));
+    return { verified: false, message: err.detail || 'Verification request failed.' };
+  }
+
+  return response.json();
+}
+
+/**
+ * Helper to get Admin Authorization header
+ */
+function getAdminAuthHeader() {
+  const token = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('cf_token') : null;
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+/**
+ * List all members in the roster for Admin Dashboard.
+ * GET /admin/members
+ * @param {string} search
+ * @returns {Promise<Array>}
+ */
+async function fetchAdminMembers(search = '') {
+  const query = search ? `?search=${encodeURIComponent(search)}` : '';
+  const response = await fetch(`${API_BASE}/admin/members${query}`, {
+    method: 'GET',
+    headers: {
+      ...getAdminAuthHeader(),
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch members roster');
+  }
+
+  return response.json();
+}
+
+/**
+ * Add a new student or faculty member via Admin UI.
+ * POST /admin/members
+ * @param {Object} memberData { college_id, name, department, email, role }
+ * @returns {Promise<Object>}
+ */
+async function addAdminMember(memberData) {
+  const response = await fetch(`${API_BASE}/admin/members`, {
+    method: 'POST',
+    headers: {
+      ...getAdminAuthHeader(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(memberData)
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to add new student');
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete a member from roster by College ID.
+ * DELETE /admin/members/:college_id
+ * @param {string} collegeId
+ * @returns {Promise<Object>}
+ */
+async function deleteAdminMember(collegeId) {
+  const response = await fetch(`${API_BASE}/admin/members/${encodeURIComponent(collegeId)}`, {
+    method: 'DELETE',
+    headers: getAdminAuthHeader()
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to remove member');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get current Google Sheet config and sync status.
+ * GET /admin/spreadsheet/config
+ * @returns {Promise<Object>}
+ */
+async function fetchSpreadsheetConfig() {
+  const response = await fetch(`${API_BASE}/admin/spreadsheet/config`, {
+    method: 'GET',
+    headers: getAdminAuthHeader()
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch spreadsheet configuration');
+  }
+
+  return response.json();
+}
+
+/**
+ * Save Google Sheet configuration.
+ * POST /admin/spreadsheet/config
+ * @param {Object} config { google_sheet_url, webhook_url }
+ * @returns {Promise<Object>}
+ */
+async function saveSpreadsheetConfig(config) {
+  const response = await fetch(`${API_BASE}/admin/spreadsheet/config`, {
+    method: 'POST',
+    headers: {
+      ...getAdminAuthHeader(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(config)
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to save spreadsheet settings');
+  }
+
+  return response.json();
+}
+
+/**
+ * Trigger on-demand sync from Google Sheet.
+ * POST /admin/spreadsheet/sync
+ * @param {string} sheetUrl
+ * @returns {Promise<Object>}
+ */
+async function syncSpreadsheet(sheetUrl = '') {
+  const response = await fetch(`${API_BASE}/admin/spreadsheet/sync`, {
+    method: 'POST',
+    headers: {
+      ...getAdminAuthHeader(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ sheet_url: sheetUrl })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to sync with Google Sheet');
+  }
+
+  return response.json();
+}
+
+/**
+ * Bulk import members via CSV file.
+ * POST /admin/members/import-csv
+ * @param {File} file
+ * @returns {Promise<Object>}
+ */
+async function importMembersCSV(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE}/admin/members/import-csv`, {
+    method: 'POST',
+    headers: getAdminAuthHeader(),
+    body: formData
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to import CSV');
   }
 
   return response.json();

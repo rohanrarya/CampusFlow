@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard — CampusFlow</title>
-  <meta name="description" content="CampusFlow admin dashboard — manage and resolve campus complaints." />
+  <meta name="description" content="CampusFlow admin dashboard — manage complaints and campus members roster." />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -39,94 +39,184 @@
     <!-- Main Content -->
     <main class="dashboard-main">
 
-      <!-- Title Row -->
-      <div class="dashboard-title-row">
-        <div>
-          <h1>Complaint Dashboard</h1>
-          <p>Review, filter, and resolve student complaints.</p>
-        </div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <button class="filter-btn active" id="view-table-btn" style="padding:6px 14px; font-size:.8rem; display:inline-flex; align-items:center; gap:5px;">
-            <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-            Table View
-          </button>
-          <button class="filter-btn" id="view-cards-btn" style="padding:6px 14px; font-size:.8rem; display:inline-flex; align-items:center; gap:5px;">
-            <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-            Cards View
-          </button>
-          <button class="btn btn-secondary btn-sm" id="refresh-btn" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:.8rem;">
-            <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-            Refresh
-          </button>
-        </div>
+      <!-- Navigation Tabs -->
+      <div class="admin-nav-tabs">
+        <button class="admin-tab-btn active" id="tab-complaints-btn">
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Complaints &amp; Tickets
+        </button>
+        <button class="admin-tab-btn" id="tab-members-btn">
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Student &amp; Member Roster (Spreadsheet)
+        </button>
       </div>
 
-      <!-- Dashboard Stats -->
-      <div class="dash-stats">
-        <div class="dash-stat-card">
-          <div class="dash-stat-label">Total Tickets</div>
-          <div class="dash-stat-value total" id="stat-total">—</div>
+      <!-- ════ SECTION 1: COMPLAINTS DASHBOARD ════════════════ -->
+      <div id="section-complaints">
+        <!-- Title Row -->
+        <div class="dashboard-title-row">
+          <div>
+            <h1>Complaint Dashboard</h1>
+            <p>Review, filter, and resolve student complaints.</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="filter-btn active" id="view-table-btn" style="padding:6px 14px; font-size:.8rem; display:inline-flex; align-items:center; gap:5px;">
+              <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+              Table View
+            </button>
+            <button class="filter-btn" id="view-cards-btn" style="padding:6px 14px; font-size:.8rem; display:inline-flex; align-items:center; gap:5px;">
+              <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+              Cards View
+            </button>
+            <button class="btn btn-secondary btn-sm" id="refresh-btn" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:.8rem;">
+              <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+              Refresh
+            </button>
+          </div>
         </div>
-        <div class="dash-stat-card">
-          <div class="dash-stat-label">
-            <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24" style="color:#f59e0b;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+
+        <!-- Dashboard Stats -->
+        <div class="dash-stats">
+          <div class="dash-stat-card">
+            <div class="dash-stat-label">Total Tickets</div>
+            <div class="dash-stat-value total" id="stat-total">—</div>
+          </div>
+          <div class="dash-stat-card">
+            <div class="dash-stat-label">
+              <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24" style="color:#f59e0b;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Pending
+            </div>
+            <div class="dash-stat-value pending" id="stat-pending">—</div>
+          </div>
+          <div class="dash-stat-card">
+            <div class="dash-stat-label">
+              <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24" style="color:#10b981;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Resolved
+            </div>
+            <div class="dash-stat-value resolved" id="stat-resolved">—</div>
+          </div>
+          <div class="dash-stat-card">
+            <div class="dash-stat-label">
+              <span class="dot dot-high"></span>
+              High Urgency
+            </div>
+            <div class="dash-stat-value high" id="stat-high">—</div>
+          </div>
+        </div>
+
+        <!-- Filter Row -->
+        <div class="filter-row">
+          <span class="filter-group-label">Status:</span>
+          <button class="filter-btn active" data-status-filter="all">All</button>
+          <button class="filter-btn" data-status-filter="pending">
+            <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             Pending
-          </div>
-          <div class="dash-stat-value pending" id="stat-pending">—</div>
-        </div>
-        <div class="dash-stat-card">
-          <div class="dash-stat-label">
-            <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24" style="color:#10b981;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </button>
+          <button class="filter-btn" data-status-filter="resolved">
+            <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
             Resolved
-          </div>
-          <div class="dash-stat-value resolved" id="stat-resolved">—</div>
+          </button>
+
+          <div class="filter-divider"></div>
+
+          <span class="filter-group-label">Urgency:</span>
+          <button class="filter-btn active" data-urgency-filter="all">All</button>
+          <button class="filter-btn" data-urgency-filter="High"><span class="dot dot-high"></span> High</button>
+          <button class="filter-btn" data-urgency-filter="Medium"><span class="dot dot-medium"></span> Medium</button>
+          <button class="filter-btn" data-urgency-filter="Low"><span class="dot dot-low"></span> Low</button>
         </div>
-        <div class="dash-stat-card">
-          <div class="dash-stat-label">
-            <span class="dot dot-high"></span>
-            High Urgency
+
+        <!-- Loading Spinner -->
+        <div class="spinner-wrap" id="spinner" style="display:none;">
+          <div class="spinner"></div>
+          <span>Loading tickets…</span>
+        </div>
+
+        <!-- Tickets Container -->
+        <div class="tickets-container" id="tickets-grid">
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </div>
+            <h3>Loading tickets…</h3>
+            <p>Please wait while we fetch complaints.</p>
           </div>
-          <div class="dash-stat-value high" id="stat-high">—</div>
         </div>
       </div>
 
-      <!-- Filter Row -->
-      <div class="filter-row">
-        <span class="filter-group-label">Status:</span>
-        <button class="filter-btn active" data-status-filter="all">All</button>
-        <button class="filter-btn" data-status-filter="pending">
-          <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Pending
-        </button>
-        <button class="filter-btn" data-status-filter="resolved">
-          <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          Resolved
-        </button>
-
-        <div class="filter-divider"></div>
-
-        <span class="filter-group-label">Urgency:</span>
-        <button class="filter-btn active" data-urgency-filter="all">All</button>
-        <button class="filter-btn" data-urgency-filter="High"><span class="dot dot-high"></span> High</button>
-        <button class="filter-btn" data-urgency-filter="Medium"><span class="dot dot-medium"></span> Medium</button>
-        <button class="filter-btn" data-urgency-filter="Low"><span class="dot dot-low"></span> Low</button>
-      </div>
-
-      <!-- Loading Spinner -->
-      <div class="spinner-wrap" id="spinner" style="display:none;">
-        <div class="spinner"></div>
-        <span>Loading tickets…</span>
-      </div>
-
-      <!-- Tickets Container -->
-      <div class="tickets-container" id="tickets-grid">
-        <!-- Rendered by admin.js -->
-        <div class="empty-state">
-          <div class="empty-icon">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      <!-- ════ SECTION 2: SPREADSHEET & MEMBERS ROSTER ═════════ -->
+      <div id="section-members" style="display:none;">
+        <div class="dashboard-title-row">
+          <div>
+            <h1>Student &amp; Member Roster</h1>
+            <p>Manage genuine College IDs, sync with Google Sheets, and add new students via UI.</p>
           </div>
-          <h3>Loading tickets…</h3>
-          <p>Please wait while we fetch complaints.</p>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="btn-open-add-member" style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.82rem;">
+              <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" style="stroke:#fff;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Student / Member
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-sync-sheet" style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:.82rem;">
+              <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+              <span id="btn-sync-sheet-text">Sync with Google Sheet</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-config-sheet" style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:.82rem;">
+              <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Sheet Settings
+            </button>
+            <a href="/api/v1/admin/members/export-csv" class="btn btn-secondary btn-sm" id="btn-export-csv" style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:.82rem;">
+              <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export CSV
+            </a>
+            <label class="btn btn-secondary btn-sm" for="csv-file-input" style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:.82rem; cursor:pointer; margin:0;">
+              <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import CSV
+            </label>
+            <input type="file" id="csv-file-input" accept=".csv" style="display:none;" />
+          </div>
+        </div>
+
+        <!-- Spreadsheet Status Card -->
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px 20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:0.82rem; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:0.5px; margin-bottom:4px;">
+              Spreadsheet Integration Status
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span id="sheet-status-dot" class="dot dot-low"></span>
+              <span id="sheet-status-text" style="font-weight:600; font-size:0.95rem; color:#fff;">Active (Neon DB &amp; Linked Spreadsheet)</span>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">
+              Last Synced: <span id="sheet-last-synced">—</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:16px; align-items:center;">
+            <div style="text-align:right;">
+              <div style="font-size:0.78rem; color:var(--text-muted);">Total Members in Directory</div>
+              <div style="font-size:1.4rem; font-weight:700; color:var(--primary);" id="members-count-badge">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:16px;">
+          <input
+            type="text"
+            id="member-search-input"
+            class="form-control"
+            placeholder="Search roster by College ID, Student Name, or Department..."
+            style="width:100%; font-size:0.9rem; padding:8px 14px;"
+          />
+        </div>
+
+        <!-- Members Table Container -->
+        <div class="table-responsive" id="members-table-container">
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <h3>Loading members roster…</h3>
+          </div>
         </div>
       </div>
 
@@ -142,12 +232,103 @@
               <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>
-          <div class="modal-body" id="modal-body">
-            <!-- Injected by admin.js -->
+          <div class="modal-body" id="modal-body"></div>
+          <div class="modal-footer" id="modal-footer"></div>
+        </div>
+      </div>
+
+      <!-- ══ Add New Student / Member Modal ═══════════════════════ -->
+      <div class="modal-overlay" id="add-member-modal-overlay">
+        <div class="modal" style="max-width:480px;">
+          <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <h2 style="font-size:1.2rem; margin:0; display:flex; align-items:center; gap:8px;">
+              <svg class="ui-icon" width="18" height="18" viewBox="0 0 24 24" style="color:var(--primary);"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              Add Student / Member
+            </h2>
+            <button class="modal-close-btn" id="add-member-close-btn" style="background:none; border:none; color:var(--text-muted); cursor:pointer;">
+              <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
           </div>
-          <div class="modal-footer" id="modal-footer">
-            <!-- Injected by admin.js -->
+
+          <form id="add-member-form">
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label">College ID <span class="required">*</span></label>
+              <input type="text" id="new-college-id" class="form-control" placeholder="E.g. STD202610, 21BCSE102" required style="text-transform:uppercase;" />
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label">Full Name <span class="required">*</span></label>
+              <input type="text" id="new-name" class="form-control" placeholder="E.g. Aarav Sharma" required />
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label">Department / Branch</label>
+              <input type="text" id="new-dept" class="form-control" placeholder="E.g. Computer Science, Mechanical..." value="Computer Science" />
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label">Role</label>
+              <select id="new-role" class="form-control">
+                <option value="student">Student</option>
+                <option value="faculty">Faculty</option>
+                <option value="staff">Staff Member</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom:20px;">
+              <label class="form-label">Email Address (Optional)</label>
+              <input type="email" id="new-email" class="form-control" placeholder="E.g. student@college.edu" />
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" class="btn btn-secondary" id="add-member-cancel-btn">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="add-member-submit-btn">
+                <span id="add-member-btn-text">Save to Roster &amp; Sheet</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ══ Google Sheet Config Modal ════════════════════════════ -->
+      <div class="modal-overlay" id="config-sheet-modal-overlay">
+        <div class="modal" style="max-width:520px;">
+          <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <h2 style="font-size:1.2rem; margin:0; display:flex; align-items:center; gap:8px;">
+              <svg class="ui-icon" width="18" height="18" viewBox="0 0 24 24" style="color:var(--primary);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Google Sheet Integration
+            </h2>
+            <button class="modal-close-btn" id="config-sheet-close-btn" style="background:none; border:none; color:var(--text-muted); cursor:pointer;">
+              <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
           </div>
+
+          <form id="config-sheet-form">
+            <div class="form-group" style="margin-bottom:14px;">
+              <label class="form-label">Google Sheet URL or ID</label>
+              <input type="text" id="config-sheet-url" class="form-control" placeholder="https://docs.google.com/spreadsheets/d/.../edit" />
+              <div class="form-hint" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                Make sure sharing is set to "Anyone with the link can view".
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:16px;">
+              <label class="form-label">Google Apps Script Webhook URL (Optional for 2-Way Sync)</label>
+              <input type="text" id="config-webhook-url" class="form-control" placeholder="https://script.google.com/macros/s/.../exec" />
+              <div class="form-hint" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                Allows CampusFlow to write new students directly back to your Google Sheet rows.
+              </div>
+            </div>
+
+            <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:var(--radius); padding:10px 14px; font-size:0.8rem; color:var(--text-muted); margin-bottom:18px; line-height:1.5;">
+              <strong style="color:#fff;">Expected Sheet Columns:</strong> <code>College ID</code>, <code>Name</code>, <code>Department</code>, <code>Role</code>, <code>Email</code>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" class="btn btn-secondary" id="config-sheet-cancel-btn">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="config-sheet-submit-btn">Save Settings</button>
+            </div>
+          </form>
         </div>
       </div>
 

@@ -38,6 +38,21 @@ def get_favicon():
 app.include_router(api_router)
 app.include_router(api_router, prefix="/api/v1")
 
+
+# ── Startup: Ensure Tables & Seed Members ─────────────────────
+@app.on_event("startup")
+def startup_db_init():
+    try:
+        from core.database import engine, Base, SessionLocal
+        import models
+        from services.spreadsheet_service import seed_sample_members_if_empty
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        seed_sample_members_if_empty(db)
+        db.close()
+    except Exception as e:
+        print(f"Startup DB init warning: {e}")
+
 # ── Health Check ──────────────────────────────────────────────
 @app.api_route("/health", methods=["GET", "HEAD", "OPTIONS"])
 def health():

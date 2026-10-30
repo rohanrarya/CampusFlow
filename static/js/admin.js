@@ -240,6 +240,7 @@ function initDashboardPage() {
   });
 
   fetchTickets();
+  initMembersTab();
 }
 
 async function fetchTickets() {
@@ -690,3 +691,308 @@ document.addEventListener('DOMContentLoaded', () => {
     initDashboardPage();
   }
 });
+
+
+/* ─────────────────────────────────────────────────────────── */
+/*  MEMBERS & SPREADSHEET ROSTER MODULE                        */
+/* ─────────────────────────────────────────────────────────── */
+
+let allMembers = [];
+
+function initMembersTab() {
+  const tabComplaintsBtn = document.getElementById('tab-complaints-btn');
+  const tabMembersBtn = document.getElementById('tab-members-btn');
+  const secComplaints = document.getElementById('section-complaints');
+  const secMembers = document.getElementById('section-members');
+
+  if (!tabComplaintsBtn || !tabMembersBtn) return;
+
+  tabComplaintsBtn.addEventListener('click', () => {
+    tabComplaintsBtn.classList.add('active');
+    tabMembersBtn.classList.remove('active');
+    if (secComplaints) secComplaints.style.display = 'block';
+    if (secMembers) secMembers.style.display = 'none';
+  });
+
+  tabMembersBtn.addEventListener('click', () => {
+    tabMembersBtn.classList.add('active');
+    tabComplaintsBtn.classList.remove('active');
+    if (secComplaints) secComplaints.style.display = 'none';
+    if (secMembers) secMembers.style.display = 'block';
+    loadAdminMembers();
+    loadSpreadsheetConfigUI();
+  });
+
+  // Search input
+  const searchInput = document.getElementById('member-search-input');
+  let memberSearchTimer = null;
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(memberSearchTimer);
+      memberSearchTimer = setTimeout(() => {
+        loadAdminMembers(searchInput.value.trim());
+      }, 300);
+    });
+  }
+
+  // Add Member Modal
+  const openAddBtn = document.getElementById('btn-open-add-member');
+  const addModal = document.getElementById('add-member-modal-overlay');
+  const addCloseBtn = document.getElementById('add-member-close-btn');
+  const addCancelBtn = document.getElementById('add-member-cancel-btn');
+  const addForm = document.getElementById('add-member-form');
+  const addBtnText = document.getElementById('add-member-btn-text');
+
+  if (openAddBtn && addModal) {
+    openAddBtn.addEventListener('click', () => {
+      if (addForm) addForm.reset();
+      addModal.classList.add('visible');
+    });
+  }
+  const closeAddModal = () => { if (addModal) addModal.classList.remove('visible'); };
+  if (addCloseBtn) addCloseBtn.addEventListener('click', closeAddModal);
+  if (addCancelBtn) addCancelBtn.addEventListener('click', closeAddModal);
+  if (addModal) {
+    addModal.addEventListener('click', (e) => { if (e.target === addModal) closeAddModal(); });
+  }
+
+  if (addForm) {
+    addForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const cid = document.getElementById('new-college-id').value.trim();
+      const name = document.getElementById('new-name').value.trim();
+      const dept = document.getElementById('new-dept').value.trim();
+      const role = document.getElementById('new-role').value;
+      const email = document.getElementById('new-email').value.trim();
+
+      if (!cid || !name) {
+        showToast('College ID and Name are required.', 'error');
+        return;
+      }
+
+      if (addBtnText) addBtnText.innerHTML = '<span class="btn-spinner"></span> Saving…';
+
+      try {
+        const res = await addAdminMember({
+          college_id: cid,
+          name: name,
+          department: dept,
+          role: role,
+          email: email
+        });
+        showToast(res.message || 'Member added successfully!', 'success');
+        closeAddModal();
+        loadAdminMembers();
+        loadSpreadsheetConfigUI();
+      } catch (err) {
+        showToast(err.message || 'Failed to add member', 'error');
+      } finally {
+        if (addBtnText) addBtnText.textContent = 'Save to Roster & Sheet';
+      }
+    });
+  }
+
+  // Sheet Config Modal
+  const openConfigBtn = document.getElementById('btn-config-sheet');
+  const configModal = document.getElementById('config-sheet-modal-overlay');
+  const configCloseBtn = document.getElementById('config-sheet-close-btn');
+  const configCancelBtn = document.getElementById('config-sheet-cancel-btn');
+  const configForm = document.getElementById('config-sheet-form');
+
+  if (openConfigBtn && configModal) {
+    openConfigBtn.addEventListener('click', async () => {
+      try {
+        const cfg = await fetchSpreadsheetConfig();
+        const urlInput = document.getElementById('config-sheet-url');
+        const webhookInput = document.getElementById('config-webhook-url');
+        if (urlInput) urlInput.value = cfg.google_sheet_url || '';
+        if (webhookInput) webhookInput.value = cfg.webhook_url || '';
+      } catch (e) {}
+      configModal.classList.add('visible');
+    });
+  }
+  const closeConfigModal = () => { if (configModal) configModal.classList.remove('visible'); };
+  if (configCloseBtn) configCloseBtn.addEventListener('click', closeConfigModal);
+  if (configCancelBtn) configCancelBtn.addEventListener('click', closeConfigModal);
+  if (configModal) {
+    configModal.addEventListener('click', (e) => { if (e.target === configModal) closeConfigModal(); });
+  }
+
+  if (configForm) {
+    configForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const sheetUrl = document.getElementById('config-sheet-url').value.trim();
+      const webhookUrl = document.getElementById('config-webhook-url').value.trim();
+
+      try {
+        await saveSpreadsheetConfig({ google_sheet_url: sheetUrl, webhook_url: webhookUrl });
+        showToast('Spreadsheet configuration saved!', 'success');
+        closeConfigModal();
+        loadSpreadsheetConfigUI();
+      } catch (err) {
+        showToast(err.message || 'Failed to save settings', 'error');
+      }
+    });
+  }
+
+  // Sync Sheet Button
+  const syncBtn = document.getElementById('btn-sync-sheet');
+  const syncBtnText = document.getElementById('btn-sync-sheet-text');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', async () => {
+      syncBtn.disabled = true;
+      if (syncBtnText) syncBtnText.innerHTML = '<span class="btn-spinner"></span> Syncing…';
+
+      try {
+        const res = await syncSpreadsheet();
+        showToast(`Sync complete! Added: ${res.added}, Updated: ${res.updated} members.`, 'success');
+        loadAdminMembers();
+        loadSpreadsheetConfigUI();
+      } catch (err) {
+        showToast(err.message || 'Failed to sync with Google Sheet', 'error');
+      } finally {
+        syncBtn.disabled = false;
+        if (syncBtnText) syncBtnText.textContent = 'Sync with Google Sheet';
+      }
+    });
+  }
+
+  // Import CSV input
+  const csvInput = document.getElementById('csv-file-input');
+  if (csvInput) {
+    csvInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const res = await importMembersCSV(file);
+        showToast(res.message || 'CSV imported successfully!', 'success');
+        loadAdminMembers();
+        loadSpreadsheetConfigUI();
+      } catch (err) {
+        showToast(err.message || 'Failed to import CSV', 'error');
+      } finally {
+        csvInput.value = '';
+      }
+    });
+  }
+}
+
+async function loadSpreadsheetConfigUI() {
+  try {
+    const cfg = await fetchSpreadsheetConfig();
+    const countBadge = document.getElementById('members-count-badge');
+    const lastSynced = document.getElementById('sheet-last-synced');
+    const statusText = document.getElementById('sheet-status-text');
+
+    if (countBadge) countBadge.textContent = cfg.total_members || 0;
+    if (lastSynced) lastSynced.textContent = cfg.last_synced_at || 'Never';
+
+    if (statusText) {
+      if (cfg.google_sheet_url) {
+        statusText.textContent = 'Connected: Google Sheet Active';
+      } else {
+        statusText.textContent = 'Active (Neon DB Directory)';
+      }
+    }
+  } catch (err) {
+    console.error('Error loading spreadsheet config:', err);
+  }
+}
+
+async function loadAdminMembers(search = '') {
+  const container = document.getElementById('members-table-container');
+  if (!container) return;
+
+  try {
+    const members = await fetchAdminMembers(search);
+    allMembers = members;
+
+    const countBadge = document.getElementById('members-count-badge');
+    if (countBadge) countBadge.textContent = members.length;
+
+    if (!members || members.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h3>No members found</h3>
+          <p>${search ? 'No results matching "' + escapeHtml(search) + '".' : 'Click "Add Student / Member" or sync from your Google Sheet to populate the roster.'}</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="tickets-table">
+        <thead>
+          <tr>
+            <th>College ID</th>
+            <th>Member Name</th>
+            <th>Department</th>
+            <th>Role</th>
+            <th>Email</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${members.map(m => {
+            const isFaculty = (m.role || '').toLowerCase() === 'faculty';
+            return `
+              <tr>
+                <td><span class="ticket-id-badge" style="font-weight:700;">${escapeHtml(m.college_id)}</span></td>
+                <td><strong style="color:#fff;">${escapeHtml(m.name)}</strong></td>
+                <td>${escapeHtml(m.department || '—')}</td>
+                <td>
+                  <span class="role-badge" style="${isFaculty ? 'background:rgba(245,158,11,0.2);color:#fbbf24;border-color:rgba(245,158,11,0.4);' : ''}">
+                    ${escapeHtml((m.role || 'student').toUpperCase())}
+                  </span>
+                </td>
+                <td style="color:var(--text-muted); font-size:0.85rem;">${escapeHtml(m.email || '—')}</td>
+                <td style="text-align:right;">
+                  <button
+                    class="btn btn-secondary btn-sm delete-member-btn"
+                    data-college-id="${escapeHtml(m.college_id)}"
+                    data-name="${escapeHtml(m.name)}"
+                    style="padding:4px 10px; font-size:0.75rem; color:#ef4444; border-color:rgba(239,68,68,0.35); cursor:pointer;"
+                    title="Remove member"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+
+    // Attach delete listeners
+    container.querySelectorAll('.delete-member-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cid = btn.dataset.collegeId;
+        const name = btn.dataset.name;
+        if (!confirm(`Are you sure you want to remove ${name} (${cid}) from the roster?`)) return;
+
+        try {
+          await deleteAdminMember(cid);
+          showToast(`Member ${cid} removed.`, 'success');
+          loadAdminMembers();
+          loadSpreadsheetConfigUI();
+        } catch (err) {
+          showToast(err.message || 'Failed to delete member', 'error');
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error('Failed to load members:', err);
+    container.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon"><svg class="ui-icon" width="36" height="36" viewBox="0 0 24 24" style="stroke:var(--danger);"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span>
+        <h3>Could not load members</h3>
+        <p>${escapeHtml(err.message || 'Please check your connection and try again.')}</p>
+      </div>
+    `;
+  }
+}
