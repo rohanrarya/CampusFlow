@@ -233,12 +233,16 @@ def trigger_spreadsheet_sync(
     Trigger on-demand sync from Google Sheet into local database.
     """
     require_admin(request)
-    sheet_url = data.sheet_url.strip() or get_setting(db, "google_sheet_url", "")
+    sheet_url = (
+        (data.sheet_url or "").strip()
+        or get_setting(db, "google_sheet_url", "")
+        or get_setting(db, "google_sheet_webhook_url", "")
+    )
 
     if not sheet_url:
         raise HTTPException(
             status_code=400,
-            detail="No Google Sheet URL provided. Please enter a Google Sheet URL first."
+            detail="No Google Sheet URL or Webhook found. Please click 'Sheet Settings' and paste your link first."
         )
 
     try:

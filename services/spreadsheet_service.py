@@ -131,33 +131,68 @@ def sync_from_google_sheet(db: Session, sheet_url: str):
     Parses rows and saves them into the database roster.
     """
     if not sheet_url or not sheet_url.strip():
-        raise ValueError("Google Sheet URL is required.")
+        raise ValueError("Please provide a Google Sheet URL or Webhook in Sheet Settings.")
 
     url = sheet_url.strip()
     rows = []
 
-    # 1. If it's a Google Apps Script Webhook (ends in /exec)
-    if "script.google.com" in url:
-        req = urllib.request.Request(url, headers={"User-Agent": "CampusFlow/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            if isinstance(data, list):
-                rows = data
-            elif isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
-                rows = data["data"]
+    try:
+        # 1. If it's a Google Apps Script Webhook (ends in /exec)
+        if "script.google.com" in url:
+            req = urllib.request.Request(url, headers={"User-Agent": "CampusFlow/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw_body = resp.read().decode("utf-8")
+                try:
+                    data = json.loads(raw_body)
+                except json.JSONDecodeError:
+                    raise ValueError(
+                        "Google Apps Script returned an authorization page instead of JSON. "
+                        "Please open your Apps Script, click Deploy -> New deployment -> set 'Who has access' to 'Anyone'."
+                    )
+                if isinstance(data, list):
+                    rows = data
+                elif isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
+                    rows = data["data"]
 
-    # 2. If it's a standard Google Sheets URL, fetch direct CSV export
-    else:
-        sheet_id = extract_sheet_id(url)
-        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-        req = urllib.request.Request(csv_url, headers={"User-Agent": "CampusFlow/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            csv_content = resp.read().decode("utf-8", errors="ignore")
-            reader = csv.DictReader(io.StringIO(csv_content))
-            rows = list(reader)
+        # 2. If it's a standard Google Sheets URL, fetch direct CSV export
+        else:
+            sheet_id = extract_sheet_id(url)
+            if not sheet_id:
+                raise ValueError("Invalid Google Sheet link. Please paste the full URL from your browser address bar.")
+
+            csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
+            req = urllib.request.Request(csv_url, headers={"User-Agent": "CampusFlow/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                csv_content = resp.read().decode("utf-8", errors="ignore")
+                
+                # Check if Google returned an HTML login page (means sheet is private)
+                if "<!DOCTYPE html" in csv_content or "<html" in csv_content:
+                    raise ValueError(
+                        "Google Sheet access denied. Please click 'Share' in Google Sheets and change General Access to 'Anyone with the link can view'."
+                    )
+
+                reader = csv.DictReader(io.StringIO(csv_content))
+                rows = list(reader)
+
+    except urllib.error.HTTPError as http_err:
+        if http_err.code in [401, 403]:
+            raise ValueError("Google Sheet access was denied. Please make sure the sheet is shared as 'Anyone with the link can view'.")
+        elif http_err.code == 404:
+            raise ValueError("Google Sheet not found. Please verify the sheet link in Sheet Settings.")
+        else:
+            raise ValueError(f"HTTP error connecting to Google Sheets ({http_err.code}): {http_err.reason}")
+    except urllib.error.URLError as url_err:
+        raise ValueError(f"Network error connecting to Google Sheets: {url_err.reason}")
 
     if not rows:
-        raise ValueError("No rows found in spreadsheet. Ensure sheet is not empty and shared properly.")
+        return {
+            "success": True,
+            "added": 0,
+            "updated": 0,
+            "total_synced": 0,
+            "message": "Connected successfully! 0 student rows found in sheet (add students to your sheet or via UI).",
+            "timestamp": get_ist_time()
+        }
 
     # 3. Match flexible column names and save into database
     added_count = 0
