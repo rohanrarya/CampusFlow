@@ -1215,35 +1215,7 @@ textarea.form-control { min-height: 140px; }
   gap: 12px;
   padding: 14px 20px;
   border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  font-size: .875rem;
-  font-weight: 600;
-  min-width: 280px;
-  max-width: 380px;
-  pointer-events: all;
-  animation: toastIn .35s cubic-bezier(.4,0,.2,1);
-  transition: var(--transition);
-}
-
-.toast.removing {
-  animation: toastOut .3s cubic-bezier(.4,0,.2,1) forwards;
-}
-
-@keyframes toastIn {
-  from { opacity: 0; transform: translateX(40px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes toastOut {
-  to { opacity: 0; transform: translateX(40px); }
-}
-
-.toast {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
-  border-radius: var(--radius);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.05);
   font-size: .875rem;
   font-weight: 500;
   min-width: 280px;
@@ -1251,27 +1223,29 @@ textarea.form-control { min-height: 140px; }
   pointer-events: all;
   animation: toastIn .35s cubic-bezier(.4,0,.2,1);
   transition: var(--transition);
+  background: #ffffff;
+  color: #0f172a;
 }
 
 .toast-success {
-  background: #1e293b;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  border-left: 4px solid var(--success, #10b981);
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #a7f3d0;
+  border-left: 5px solid #10b981;
+  color: #065f46;
 }
 
 .toast-error {
-  background: #1e293b;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  border-left: 4px solid var(--danger, #ef4444);
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  border-left: 5px solid #ef4444;
+  color: #991b1b;
 }
 
 .toast-info {
-  background: #1e293b;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  border-left: 4px solid var(--primary, #6366f1);
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-left: 5px solid #4f46e5;
+  color: #1e1b4b;
 }
 
 .toast-icon { font-size: 1.1rem; flex-shrink: 0; }
@@ -2154,22 +2128,22 @@ html, body {
 /* ============================================================== */
 
 .college-id-box {
-  background: rgba(30, 41, 59, 0.45);
-  border: 1px solid var(--border);
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
   border-radius: var(--radius);
-  padding: 18px;
-  margin-bottom: 20px;
+  padding: 18px 20px;
+  margin-bottom: 22px;
   transition: all 0.3s ease;
 }
 
 .college-id-box.verified {
-  background: rgba(16, 185, 129, 0.08);
-  border-color: rgba(16, 185, 129, 0.4);
+  background: #f0fdf4;
+  border-color: #86efac;
 }
 
 .college-id-box.error {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.4);
+  background: #fef2f2;
+  border-color: #fca5a5;
 }
 
 .id-input-wrap {
@@ -2179,9 +2153,19 @@ html, body {
 }
 
 .id-input-wrap .form-control {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1.5px solid #cbd5e1;
   padding-right: 95px;
   font-weight: 600;
+  font-size: 0.95rem;
   letter-spacing: 0.5px;
+  border-radius: 8px;
+}
+
+.id-input-wrap .form-control:focus {
+  border-color: var(--accent, #4f46e5);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
 .id-verify-btn {
@@ -2189,22 +2173,23 @@ html, body {
   right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  padding: 6px 14px;
-  font-size: 0.8rem;
+  padding: 7px 16px;
+  font-size: 0.82rem;
   font-weight: 600;
   border-radius: 6px;
-  background: var(--primary);
-  color: #fff;
+  background: var(--accent, #4f46e5);
+  color: #ffffff;
   border: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .id-verify-btn:hover {
-  background: var(--primary-hover, #4f46e5);
+  background: #4338ca;
 }
 
 .id-verify-btn:disabled {
@@ -2212,16 +2197,17 @@ html, body {
   cursor: not-allowed;
 }
 
-/* Animated SVG Green Checkmark */
+/* ── Animated SVG Green Checkmark ── */
 .checkmark-wrap {
   display: flex;
   align-items: center;
   gap: 14px;
   margin-top: 14px;
-  padding: 12px 16px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 14px 18px;
+  background: #ffffff;
+  border: 1.5px solid #86efac;
   border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
   animation: fadeInScale 0.35s ease-out forwards;
 }
 
@@ -2252,7 +2238,7 @@ html, body {
   transform-origin: 50% 50%;
   stroke-dasharray: 48;
   stroke-dashoffset: 48;
-  stroke: #fff;
+  stroke: #ffffff;
   animation: checkStroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
 }
 
@@ -2293,9 +2279,9 @@ html, body {
 }
 
 .verified-member-title {
-  font-size: 0.92rem;
+  font-size: 1rem;
   font-weight: 700;
-  color: #fff;
+  color: #0f172a; /* Dark charcoal - crisp and crystal clear! */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2303,21 +2289,22 @@ html, body {
 }
 
 .verified-member-dept {
-  font-size: 0.8rem;
-  color: #94a3b8;
-  margin-top: 2px;
+  font-size: 0.84rem;
+  color: #334155; /* Slate grey - high contrast, clear! */
+  margin-top: 3px;
+  font-weight: 500;
 }
 
 .role-badge {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.2);
-  color: #818cf8;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  font-weight: 600;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1.5px solid #bfdbfe;
+  font-weight: 700;
 }
 
 .id-error-wrap {
@@ -2325,20 +2312,21 @@ html, body {
   align-items: center;
   gap: 10px;
   margin-top: 12px;
-  padding: 10px 14px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
   border-radius: 8px;
-  color: #fca5a5;
-  font-size: 0.84rem;
+  color: #991b1b; /* Rich dark red - readable! */
+  font-size: 0.86rem;
+  font-weight: 600;
   animation: fadeInScale 0.25s ease-out forwards;
 }
 
-/* Admin Dashboard Tabs */
+/* ── Admin Dashboard Tabs ── */
 .admin-nav-tabs {
   display: flex;
-  gap: 10px;
-  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  border-bottom: 2px solid var(--border);
   margin-bottom: 24px;
 }
 
@@ -2346,8 +2334,9 @@ html, body {
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
   padding: 12px 20px;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
@@ -2358,10 +2347,10 @@ html, body {
 }
 
 .admin-tab-btn:hover {
-  color: var(--text-main, #fff);
+  color: var(--text, #0f172a);
 }
 
 .admin-tab-btn.active {
-  color: var(--primary, #6366f1);
-  border-bottom-color: var(--primary, #6366f1);
+  color: var(--accent, #4f46e5);
+  border-bottom-color: var(--accent, #4f46e5);
 }

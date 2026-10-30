@@ -941,7 +941,7 @@ async function loadAdminMembers(search = '') {
             return `
               <tr>
                 <td><span class="ticket-id-badge" style="font-weight:700;">${escapeHtml(m.college_id)}</span></td>
-                <td><strong style="color:#fff;">${escapeHtml(m.name)}</strong></td>
+                <td><strong style="color:#0f172a; font-weight:700;">${escapeHtml(m.name)}</strong></td>
                 <td>${escapeHtml(m.department || '—')}</td>
                 <td>
                   <span class="role-badge" style="${isFaculty ? 'background:rgba(245,158,11,0.2);color:#fbbf24;border-color:rgba(245,158,11,0.4);' : ''}">
