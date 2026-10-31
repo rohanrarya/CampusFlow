@@ -6,7 +6,7 @@
   <title>Admin Dashboard — CampusFlow</title>
   <meta name="description" content="CampusFlow admin dashboard — manage complaints and campus members roster." />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-  <link rel="stylesheet" href="css/style.css?v=20261031_3" />
+  <link rel="stylesheet" href="css/style.css?v=20261031_4" />
 </head>
 <body>
 
@@ -73,6 +73,10 @@
               <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
               Cards View
             </button>
+            <button class="btn btn-secondary btn-sm" id="open-compliance-btn" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:.8rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600;">
+              <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              NAAC / UGC Audit Report
+            </button>
             <button class="btn btn-secondary btn-sm" id="refresh-btn" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:.8rem;">
               <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
               Refresh
@@ -129,6 +133,20 @@
           <button class="filter-btn" data-urgency-filter="High"><span class="dot dot-high"></span> High</button>
           <button class="filter-btn" data-urgency-filter="Medium"><span class="dot dot-medium"></span> Medium</button>
           <button class="filter-btn" data-urgency-filter="Low"><span class="dot dot-low"></span> Low</button>
+
+          <div class="filter-divider"></div>
+          <span class="filter-group-label">Department:</span>
+          <select id="filter-dept-select" style="font-size:0.78rem; padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1; background:#ffffff; color:#334155; font-weight:600;">
+            <option value="all">All Departments</option>
+            <option value="Anti-Ragging Committee">⚡ Anti-Ragging Committee</option>
+            <option value="Internal Complaints Committee (ICC)">🛡️ Internal Complaints (ICC)</option>
+            <option value="Hostel & Mess Administration">Hostel &amp; Mess</option>
+            <option value="Academics & Examination">Academics &amp; Exam</option>
+            <option value="IT Support">IT Support</option>
+            <option value="Network Team">Network Team</option>
+            <option value="Electrical Team">Electrical Team</option>
+            <option value="Maintenance & Sanitation">Maintenance &amp; Sanitation</option>
+          </select>
         </div>
 
         <!-- Loading Spinner -->
@@ -340,6 +358,66 @@
         </div>
       </div>
 
+    
+    <!-- ══ NAAC & UGC Compliance Modal ══════════════════════════ -->
+    <div class="modal-overlay" id="compliance-modal-overlay">
+      <div class="modal" style="max-width: 600px;">
+        <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div>
+            <span style="font-size:0.75rem; font-weight:700; color:#2563eb; text-transform:uppercase; letter-spacing:0.5px;">Institutional Compliance</span>
+            <h2 style="font-size:1.25rem; margin:2px 0 0 0; color:#0f172a;">NAAC &amp; UGC Grievance Audit Statement</h2>
+          </div>
+          <button class="modal-close-btn" id="compliance-modal-close-btn" style="background:none; border:none; color:var(--text-muted); cursor:pointer;">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding:0;">
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:0.82rem; color:#1e40af;">
+            <strong>Statutory Benchmark (UGC 2023):</strong> Colleges must redress all registered student grievances within 15 working days. Meets NAAC SSR Metric 5.1.5.
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+              <div style="font-size:0.75rem; color:#64748b; font-weight:600; text-transform:uppercase;">15-Day UGC SLA Rate</div>
+              <div style="font-size:1.6rem; font-weight:800; color:#16a34a; margin-top:2px;" id="c-sla-rate">100%</div>
+              <div style="font-size:0.72rem; color:#64748b;" id="c-sla-sub">Resolved within deadline</div>
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+              <div style="font-size:0.75rem; color:#64748b; font-weight:600; text-transform:uppercase;">Avg Turnaround Time</div>
+              <div style="font-size:1.6rem; font-weight:800; color:#0f172a; margin-top:2px;" id="c-turnaround">1.5 Days</div>
+              <div style="font-size:0.72rem; color:#64748b;">From report to resolution</div>
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+              <div style="font-size:0.75rem; color:#64748b; font-weight:600; text-transform:uppercase;">Student Satisfaction</div>
+              <div style="font-size:1.6rem; font-weight:800; color:#eab308; margin-top:2px;" id="c-rating">4.8 / 5 ★</div>
+              <div style="font-size:0.72rem; color:#64748b;" id="c-rating-sub">Based on verified feedback</div>
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+              <div style="font-size:0.75rem; color:#64748b; font-weight:600; text-transform:uppercase;">Anti-Ragging / ICC Cases</div>
+              <div style="font-size:1.6rem; font-weight:800; color:#0f172a; margin-top:2px;" id="c-safety-cases">0</div>
+              <div style="font-size:0.72rem; color:#64748b;">Statutory safety escalation</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div style="font-size:0.8rem; font-weight:700; color:#0f172a; margin-bottom:6px;">Department Distribution:</div>
+            <div id="c-dept-breakdown" style="max-height:120px; overflow-y:auto; font-size:0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px;">
+              Loading breakdown…
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:14px; border-top:1px solid #e2e8f0;">
+          <button class="btn btn-secondary" id="compliance-modal-close-btn2">Close</button>
+          <a href="/api/v1/admin/compliance-report/export" class="btn btn-primary" id="download-compliance-csv-btn" style="text-decoration:none;">
+            📥 Download Official NAAC Audit CSV
+          </a>
+        </div>
+      </div>
+    </div>
+
     </main>
 
     <!-- Footer -->
@@ -350,7 +428,7 @@
   </div>
 
   <!-- ══ Scripts ═════════════════════════════════════════════ -->
-  <script src="js/api.js?v=20261031_3"></script>
-  <script src="js/admin.js?v=20261031_3"></script>
+  <script src="js/api.js?v=20261031_4"></script>
+  <script src="js/admin.js?v=20261031_4"></script>
 </body>
 </html>

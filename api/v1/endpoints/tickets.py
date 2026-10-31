@@ -3,12 +3,21 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from core.database import get_db
 from core.security import decode_access_token
-from services.ticket_service import get_all_tickets, get_ticket, update_ticket_status
+from services.ticket_service import (
+    get_all_tickets,
+    get_ticket,
+    update_ticket_status,
+    record_ticket_feedback
+)
 
 router = APIRouter()
 
 class StatusUpdate(BaseModel):
     status: str
+
+class TicketFeedbackRequest(BaseModel):
+    rating: int  # 1 to 5
+    feedback: str | None = None
 
 @router.get("/tickets")
 def list_tickets(
@@ -78,3 +87,29 @@ def update_status(
         raise HTTPException(status_code=404, detail="Ticket not found or unauthorized")
 
     return {"message": "Ticket status updated"}
+
+@router.post("/tickets/{ticket_id}/feedback")
+def submit_ticket_feedback(
+    ticket_id: str,
+    data: TicketFeedbackRequest,
+    db: Session = Depends(get_db)
+):
+    """Save student satisfaction rating (1-5 stars) and remarks for a resolved ticket."""
+    if data.rating < 1 or data.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5 stars.")
+
+    ticket = get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found.")
+
+    success = record_ticket_feedback(db, ticket_id, data.rating, data.feedback)
+    if not success:
+        raise HTTPException(status_code=400, detail="Could not record feedback.")
+
+    return {
+        "success": True,
+        "ticket_id": ticket_id,
+        "rating": data.rating,
+        "feedback": data.feedback,
+        "message": "Thank you! Your resolution feedback has been recorded."
+    }

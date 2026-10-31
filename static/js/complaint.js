@@ -587,11 +587,14 @@ function initComplaintForm() {
       const schoolSelect = document.getElementById('school-select');
       const schoolId = (schoolSelect && schoolSelect.value) ? schoolSelect.value : (verifiedMember.school_id || 1);
 
+      const anonToggle = document.getElementById('anonymous-toggle');
+      const isAnonymous = anonToggle ? anonToggle.checked : false;
+
       const ticket = await submitComplaint(complaintText, capturedPhotoBase64, (status) => {
         if (btnText) {
           btnText.innerHTML = `<span class="btn-spinner"></span> ${status}`;
         }
-      }, verifiedMember.college_id, schoolId);
+      }, verifiedMember.college_id, schoolId, isAnonymous);
       displayResult(ticket);
       showToast('Complaint submitted successfully!', 'success');
 
@@ -838,9 +841,77 @@ function openHomeModal(ticketId) {
       </a>
       <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;display:flex;align-items:center;gap:5px;"><svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg> Click image to open high-resolution photo in new tab</div>
     </div>` : ''}
+
+    <!-- Student Resolution Rating Feedback -->
+    ${ticket.status && ticket.status.toLowerCase() === 'resolved' ? `
+    <div style="margin-top:20px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:16px;">
+      <div style="font-weight:700; color:#166534; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
+        <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" style="color:#16a34a;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Complaint Resolved! How satisfied are you with the resolution?
+      </div>
+      ${ticket.rating ? `
+        <div style="margin-top:8px; font-size:0.9rem; color:#166534;">
+          Your Rating: <strong style="color:#eab308; font-size:1.1rem;">${'★'.repeat(ticket.rating)}${'☆'.repeat(5 - ticket.rating)}</strong> (${ticket.rating}/5 Stars)
+          ${ticket.feedback ? `<div style="margin-top:4px; font-size:0.85rem; color:#334155; font-style:italic;">"${escapeHtml(ticket.feedback)}"</div>` : ''}
+        </div>
+      ` : `
+        <div id="feedback-wrap-${ticket.ticket_id}" style="margin-top:10px;">
+          <div style="display:flex; gap:6px; font-size:1.6rem; cursor:pointer;" id="star-box">
+            <span class="feedback-star" data-star="1" style="color:#cbd5e1; transition:color 0.15s;">★</span>
+            <span class="feedback-star" data-star="2" style="color:#cbd5e1; transition:color 0.15s;">★</span>
+            <span class="feedback-star" data-star="3" style="color:#cbd5e1; transition:color 0.15s;">★</span>
+            <span class="feedback-star" data-star="4" style="color:#cbd5e1; transition:color 0.15s;">★</span>
+            <span class="feedback-star" data-star="5" style="color:#cbd5e1; transition:color 0.15s;">★</span>
+          </div>
+          <input type="text" id="feedback-remarks" class="form-control" placeholder="Optional comments on resolution..." style="margin-top:8px; font-size:0.85rem; padding:8px 12px;" />
+          <button type="button" class="btn btn-primary btn-sm" id="send-feedback-btn" style="margin-top:10px; font-size:0.82rem; padding:7px 16px;">
+            Submit Resolution Rating
+          </button>
+        </div>
+      `}
+    </div>` : ''}
   `;
 
   overlay.classList.add('visible');
+
+  // Star rating interactivity
+  if (ticket.status && ticket.status.toLowerCase() === 'resolved' && !ticket.rating) {
+    let currentRating = 5;
+    const stars = overlay.querySelectorAll('.feedback-star');
+    const updateStarDisplay = (val) => {
+      stars.forEach(s => {
+        const starVal = parseInt(s.dataset.star);
+        s.style.color = starVal <= val ? '#eab308' : '#cbd5e1';
+      });
+    };
+    updateStarDisplay(5); // Default 5 stars
+    stars.forEach(s => {
+      s.addEventListener('click', () => {
+        currentRating = parseInt(s.dataset.star);
+        updateStarDisplay(currentRating);
+      });
+    });
+
+    const sendBtn = overlay.querySelector('#send-feedback-btn');
+    if (sendBtn) {
+      sendBtn.addEventListener('click', async () => {
+        const remarks = overlay.querySelector('#feedback-remarks')?.value.trim() || '';
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Saving…';
+        try {
+          await submitTicketFeedback(ticket.ticket_id, currentRating, remarks);
+          showToast('Thank you! Your feedback has been recorded.', 'success');
+          ticket.rating = currentRating;
+          ticket.feedback = remarks;
+          openHomeTicketModal(ticket);
+        } catch (err) {
+          showToast(err.message || 'Could not record feedback', 'error');
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Submit Resolution Rating';
+        }
+      });
+    }
+  }
 }
 
 function closeHomeModal() {

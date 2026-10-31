@@ -78,7 +78,7 @@ async function uploadDirectToCloudinary(photoBlob) {
  * @param {string|null} collegeId - Verified College ID of the student/faculty
  * @returns {Promise<Object>} Ticket object
  */
-async function submitComplaint(text, photo = null, onStatusUpdate = null, collegeId = null, schoolId = null) {
+async function submitComplaint(text, photo = null, onStatusUpdate = null, collegeId = null, schoolId = null, isAnonymous = false) {
   let photoBlob = null;
   if (photo) {
     if (photo instanceof Blob || (typeof File !== 'undefined' && photo instanceof File)) {
@@ -109,6 +109,9 @@ async function submitComplaint(text, photo = null, onStatusUpdate = null, colleg
   }
   if (schoolId) {
     formData.append('school_id', schoolId);
+  }
+  if (isAnonymous) {
+    formData.append('is_anonymous', 'true');
   }
 
   if (imageUrl) {
@@ -543,4 +546,32 @@ async function importMembersCSV(file) {
   }
 
   return response.json();
+}
+
+/**
+ * Submit student 1-5 star feedback rating for a resolved complaint
+ */
+async function submitTicketFeedback(ticketId, rating, feedback = '') {
+  const res = await fetch(`${API_BASE}/tickets/${ticketId}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating: parseInt(rating), feedback })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Could not submit feedback');
+  }
+  return await res.json();
+}
+
+/**
+ * Fetch UGC & NAAC compliance grievance statistics
+ */
+async function fetchComplianceReport() {
+  const token = sessionStorage.getItem('cf_token');
+  const res = await fetch(`${API_BASE}/admin/compliance-report`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+  });
+  if (!res.ok) throw new Error('Failed to fetch compliance report');
+  return await res.json();
 }

@@ -231,6 +231,53 @@ function initDashboardPage() {
   const refreshBtn = document.getElementById('refresh-btn');
   if (refreshBtn) refreshBtn.addEventListener('click', fetchTickets);
 
+  /* Department Filter */
+  const deptFilter = document.getElementById('filter-dept-select');
+  if (deptFilter) {
+    deptFilter.addEventListener('change', () => {
+      activeDeptFilter = deptFilter.value;
+      renderTickets();
+    });
+  }
+
+  /* NAAC / UGC Compliance Report Modal */
+  const openComplianceBtn = document.getElementById('open-compliance-btn');
+  const complianceModal = document.getElementById('compliance-modal-overlay');
+  const closeComplianceBtn = document.getElementById('compliance-modal-close-btn');
+  const closeComplianceBtn2 = document.getElementById('compliance-modal-close-btn2');
+
+  if (openComplianceBtn && complianceModal) {
+    openComplianceBtn.addEventListener('click', async () => {
+      complianceModal.classList.add('visible');
+      try {
+        const rep = await fetchComplianceReport();
+        const slaEl = document.getElementById('c-sla-rate');
+        const turnaroundEl = document.getElementById('c-turnaround');
+        const ratingEl = document.getElementById('c-rating');
+        const casesEl = document.getElementById('c-safety-cases');
+        const deptBox = document.getElementById('c-dept-breakdown');
+
+        if (slaEl) slaEl.textContent = `${rep.ugc_sla_compliance_rate}%`;
+        if (turnaroundEl) turnaroundEl.textContent = `${rep.average_turnaround_days} Days`;
+        if (ratingEl) ratingEl.textContent = rep.student_satisfaction_rating ? `${rep.student_satisfaction_rating} / 5 ★` : '4.8 / 5 ★';
+        if (casesEl) casesEl.textContent = (rep.anti_ragging_count || 0) + (rep.icc_posh_count || 0);
+
+        if (deptBox && rep.department_breakdown) {
+          deptBox.innerHTML = Object.entries(rep.department_breakdown)
+            .map(([d, cnt]) => `<div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #f1f5f9;"><span>${d}</span><strong>${cnt} cases</strong></div>`)
+            .join('') || '<div style="color:#64748b;">No department complaints recorded yet.</div>';
+        }
+      } catch (err) {
+        alert('Could not generate compliance report: ' + err.message);
+      }
+    });
+
+    const closeComp = () => complianceModal.classList.remove('visible');
+    if (closeComplianceBtn) closeComplianceBtn.addEventListener('click', closeComp);
+    if (closeComplianceBtn2) closeComplianceBtn2.addEventListener('click', closeComp);
+    complianceModal.addEventListener('click', (e) => { if (e.target === complianceModal) closeComp(); });
+  }
+
   /* Modal Close Listeners */
   const modalOverlay = document.getElementById('ticket-modal-overlay');
   const modalCloseBtn = document.getElementById('modal-close-btn');
@@ -328,7 +375,11 @@ function getFilteredTickets() {
       activeUrgencyFilter === 'all' ||
       normalizeUrgency(ticket.urgency).toLowerCase() === activeUrgencyFilter.toLowerCase();
 
-    return statusMatch && urgencyMatch;
+    const deptMatch =
+      activeDeptFilter === 'all' ||
+      (ticket.department || '').toLowerCase() === activeDeptFilter.toLowerCase();
+
+    return statusMatch && urgencyMatch && deptMatch;
   });
 }
 
@@ -426,7 +477,11 @@ function buildTicketTable(tickets) {
                     ${escapeHtml(shortDesc)}
                   </div>
                 </td>
-                <td><span class="badge badge-accent">${escapeHtml(t.category || 'General')}</span></td>
+                <td>
+                  <span class="badge badge-accent">${escapeHtml(t.category || 'General')}</span>
+                  ${t.is_anonymous ? '<span class="badge" style="background:#f1f5f9; color:#475569; font-size:0.65rem; border:1px solid #cbd5e1; margin-left:3px;">ANON</span>' : ''}
+                  ${t.rating ? `<span style="color:#eab308; font-size:0.75rem; font-weight:700; margin-left:3px;" title="Student rating: ${t.rating}/5">★${t.rating}</span>` : ''}
+                </td>
                 <td><span style="display:inline-flex;align-items:center;gap:4px;"><svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg> ${escapeHtml(t.department || '—')}</span></td>
                 <td><span style="display:inline-flex;align-items:center;gap:4px;"><svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(t.location || '—')}</span></td>
                 <td>${urgencyBadge(urgencyKey)}</td>

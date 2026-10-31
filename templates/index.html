@@ -6,7 +6,7 @@
   <title>CampusFlow — Campus Complaint Management</title>
   <meta name="description" content="Submit and track campus complaints quickly and easily with CampusFlow." />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-  <link rel="stylesheet" href="css/style.css?v=20261031_3" />
+  <link rel="stylesheet" href="css/style.css?v=20261031_4" />
 </head>
 <body>
 
@@ -115,6 +115,15 @@
                   <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" style="color:#dc2626;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                   <span id="id-error-text">College ID not found in campus spreadsheet directory.</span>
                 </div>
+              </div>
+
+              <!-- Anonymous Complaint Submission Toggle -->
+              <div style="margin-bottom: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; display: flex; align-items: flex-start; gap: 10px;">
+                <input type="checkbox" id="anonymous-toggle" style="margin-top: 3px; width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb;" />
+                <label for="anonymous-toggle" style="font-size: 0.85rem; color: #334155; cursor: pointer; user-select: none; margin: 0; line-height: 1.4;">
+                  <strong style="color:#0f172a;">Submit Anonymously</strong> — Protect my identity from department reviewers.
+                  <span style="display:block; font-size:0.75rem; color:#64748b; margin-top:1px;">Your ID is auto-verified from the spreadsheet to ensure student enrolment, but your name will be masked as <em>Anonymous Student</em> on all review panels.</span>
+                </label>
               </div>
 
               <div class="form-group">
@@ -455,8 +464,8 @@
   </footer>
 
   <!-- ══ Scripts ═════════════════════════════════════════════ -->
-  <script src="js/api.js?v=20261031_3"></script>
+  <script src="js/api.js?v=20261031_4"></script>
   <script src="js/auth.js"></script>
-  <script src="js/complaint.js?v=20261031_3"></script>
+  <script src="js/complaint.js?v=20261031_4"></script>
 </body>
 </html>

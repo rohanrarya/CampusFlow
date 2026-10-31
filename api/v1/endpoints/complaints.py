@@ -44,8 +44,10 @@ async def create_complaint(
     college_id: str | None = Form(None),
     school_id: int | None = Form(None),
     token: str | None = Form(None),
+    is_anonymous: str | bool | None = Form(False),
     db: Session = Depends(get_db)
 ):
+    anonymous_flag = str(is_anonymous).lower() in ["true", "1", "yes", "on"]
     submitted_by = "Campus Member"
     user_college_id = None
     resolved_school_id = school_id or 1
@@ -136,7 +138,8 @@ async def create_complaint(
         submission_id=submission_id,
         submitted_by=submitted_by,
         user_college_id=user_college_id,
-        school_id=resolved_school_id
+        school_id=resolved_school_id,
+        is_anonymous=anonymous_flag
     )
 
     return {
