@@ -43,17 +43,11 @@ app.include_router(api_router, prefix="/api/v1")
 @app.on_event("startup")
 def startup_db_init():
     try:
-        from core.database import engine, Base, SessionLocal
+        from core.database import engine, Base
         import models
-        from services.spreadsheet_service import seed_sample_members_if_empty
         Base.metadata.create_all(bind=engine)
-        db = SessionLocal()
-        seed_sample_members_if_empty(db)
-        db.close()
     except Exception as e:
         print(f"Startup DB init warning: {e}")
-
-# ── Health Check ──────────────────────────────────────────────
 @app.api_route("/health", methods=["GET", "HEAD", "OPTIONS"])
 def health():
     return {"status": "ok", "message": "CampusFlow AI is running"}
@@ -88,3 +82,9 @@ def render_admin_login(request: Request):
 @app.get("/admin-dashboard.html")
 def render_admin_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="admin-dashboard.html")
+
+
+@app.get("/subscribe")
+@app.get("/subscribe.html")
+def render_subscribe(request: Request):
+    return templates.TemplateResponse(request=request, name="subscribe.html")

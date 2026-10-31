@@ -17,7 +17,8 @@ def ticket_to_dict(ticket: Ticket) -> dict:
         "urgency": ticket.urgency,
         "image_url": ticket.image_url,
         "submitted_by": getattr(ticket, "submitted_by", None),
-        "user_college_id": getattr(ticket, "user_college_id", None)
+        "user_college_id": getattr(ticket, "user_college_id", None),
+        "school_id": getattr(ticket, "school_id", 1) or 1
     }
 
 def create_ticket(
@@ -27,7 +28,8 @@ def create_ticket(
     image_url: str = None,
     submission_id: str = None,
     submitted_by: str = None,
-    user_college_id: str = None
+    user_college_id: str = None,
+    school_id: int = 1
 ) -> dict:
     db_ticket = Ticket(
         status="Pending",
@@ -39,7 +41,8 @@ def create_ticket(
         image_url=image_url,
         submission_id=submission_id,
         submitted_by=submitted_by,
-        user_college_id=user_college_id
+        user_college_id=user_college_id,
+        school_id=school_id or 1
     )
 
     try:
@@ -59,18 +62,24 @@ def get_ticket_by_submission_id(session: Session, submission_id: str):
     ticket = session.scalars(statement).first()
     return ticket_to_dict(ticket) if ticket else None
 
-def get_ticket(session: Session, ticket_id: str):
+def get_ticket(session: Session, ticket_id: str, school_id: int | None = None):
     statement = select(Ticket).where(Ticket.ticket_id == ticket_id)
+    if school_id:
+        statement = statement.where(Ticket.school_id == school_id)
     ticket = session.scalars(statement).first()
     return ticket_to_dict(ticket) if ticket else None
 
-def get_all_tickets(session: Session):
+def get_all_tickets(session: Session, school_id: int | None = None):
     statement = select(Ticket).order_by(Ticket.id.desc())
+    if school_id:
+        statement = statement.where(Ticket.school_id == school_id)
     tickets = session.scalars(statement).all()
     return [ticket_to_dict(t) for t in tickets]
 
-def update_ticket_status(session: Session, ticket_id: str, new_status: str) -> bool:
+def update_ticket_status(session: Session, ticket_id: str, new_status: str, school_id: int | None = None) -> bool:
     statement = select(Ticket).where(Ticket.ticket_id == ticket_id)
+    if school_id:
+        statement = statement.where(Ticket.school_id == school_id)
     ticket = session.scalars(statement).first()
     if not ticket:
         return False

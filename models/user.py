@@ -16,4 +16,5 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     user_type = Column(String, default="student")
     password_hash = Column(String, nullable=False)
+    school_id = Column(Integer, nullable=True, index=True)
     created_at = Column(DateTime, default=get_ist_now)

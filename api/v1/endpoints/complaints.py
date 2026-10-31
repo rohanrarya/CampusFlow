@@ -42,23 +42,26 @@ async def create_complaint(
     image_url: str | None = Form(None),
     submission_id: str = Form(...),
     college_id: str | None = Form(None),
+    school_id: int | None = Form(None),
     token: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
     submitted_by = "Campus Member"
     user_college_id = None
+    resolved_school_id = school_id or 1
 
-    # Priority 1: Direct College ID verification from admin spreadsheet / roster
+    # Priority 1: Direct College ID verification from school spreadsheet / roster
     if college_id and college_id.strip():
         clean_cid = college_id.strip()
-        member = get_member_by_college_id(db, clean_cid)
+        member = get_member_by_college_id(db, clean_cid, school_id=school_id)
         if not member:
             raise HTTPException(
                 status_code=400,
-                detail=f"Verification failed: College ID '{clean_cid}' is not registered in the campus directory."
+                detail=f"Verification failed: College ID '{clean_cid}' is not registered in this school's directory."
             )
         submitted_by = member.name
         user_college_id = member.college_id
+        resolved_school_id = member.school_id or resolved_school_id
 
     # Priority 2: Fallback to token if provided
     elif token or request.headers.get("Authorization"):
@@ -72,6 +75,8 @@ async def create_complaint(
             if payload:
                 submitted_by = payload.get("name", "Campus Member")
                 user_college_id = payload.get("sub")
+                if payload.get("school_id"):
+                    resolved_school_id = payload.get("school_id")
 
     # If neither College ID nor token was provided, reject submission
     if not user_college_id:
@@ -99,23 +104,22 @@ async def create_complaint(
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 image_data = resp.read()
-                content_type = resp.headers.get_content_type() or "image/jpeg"
-            moderation = moderate_image(image_data, content_type)
-            if not moderation.is_safe:
+            moderation = moderate_image(image_data)
+            if not moderation.allowed:
                 raise HTTPException(
                     status_code=400,
                     detail="Image rejected: " + moderation.reason
                 )
         except HTTPException:
             raise
-        except Exception as e:
-            print(f"Direct image moderation warning: {e}")
+        except Exception as img_err:
+            print(f"Could not moderate client-uploaded image: {img_err}")
 
-    # Case 2: Fallback image file upload through backend
+    # Case 2: Standard form-data file upload (fallback)
     elif photo:
         image_data = await photo.read()
-        moderation = moderate_image(image_data, photo.content_type)
-        if not moderation.is_safe:
+        moderation = moderate_image(image_data)
+        if not moderation.allowed:
             raise HTTPException(
                 status_code=400,
                 detail="Image rejected: " + moderation.reason
@@ -123,7 +127,7 @@ async def create_complaint(
         result = cloudinary.uploader.upload(image_data)
         image_url = result.get("secure_url")
 
-    # Create ticket in database with synchronized ticket details and user metadata
+    # Create ticket in database with synchronized ticket details and school scoping
     ticket = create_ticket(
         db,
         analysis=analysis,
@@ -131,7 +135,8 @@ async def create_complaint(
         image_url=image_url,
         submission_id=submission_id,
         submitted_by=submitted_by,
-        user_college_id=user_college_id
+        user_college_id=user_college_id,
+        school_id=resolved_school_id
     )
 
     return {

@@ -11,20 +11,22 @@ class Member(Base):
     """
     Stores genuine college members (students, faculty, staff)
     synced from the admin spreadsheet or added via Admin UI.
+    Scoped by school_id for multi-school isolation.
     """
     __tablename__ = "members"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    college_id = Column(String, unique=True, index=True, nullable=False)
+    college_id = Column(String, index=True, nullable=False)
     name = Column(String, nullable=False)
     email = Column(String, nullable=True)
     department = Column(String, nullable=True)
     role = Column(String, default="student")
+    school_id = Column(Integer, nullable=True, index=True)
     created_at = Column(DateTime, default=get_ist_now)
 
 class AppSetting(Base):
     """
-    Simple key-value table to save spreadsheet settings (e.g. sheet URL, last sync time).
+    Simple key-value table to save spreadsheet settings.
     """
     __tablename__ = "app_settings"
 

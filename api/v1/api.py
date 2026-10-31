@@ -1,7 +1,8 @@
 from fastapi import APIRouter
-from .endpoints import complaints, tickets, admin, auth, members
+from .endpoints import complaints, tickets, admin, auth, members, schools
 
 api_router = APIRouter()
+api_router.include_router(schools.router, tags=["schools"])
 api_router.include_router(members.router, tags=["members"])
 api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(complaints.router, tags=["complaints"])

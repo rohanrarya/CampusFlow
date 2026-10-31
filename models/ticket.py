@@ -23,3 +23,4 @@ class Ticket(Base):
     image_url = Column(String)
     submitted_by = Column(String, nullable=True)
     user_college_id = Column(String, nullable=True)
+    school_id = Column(Integer, nullable=True, index=True)
