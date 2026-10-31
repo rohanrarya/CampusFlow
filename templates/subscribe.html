@@ -129,9 +129,9 @@
                 Subscription Plan <span class="required">*</span>
               </label>
               <select id="plan-select" class="form-control" style="font-weight: 500;">
-                <option value="Standard" selected>Standard Campus Plan (Unlimited Grievances)</option>
-                <option value="Starter">Starter Plan (Up to 500 Students)</option>
-                <option value="Enterprise">Enterprise Multi-Campus Plan</option>
+                <option value="CampusPro" selected>Campus Pro — ₹5,999 / month (Up to 5,000 Students + 2-Way Sync)</option>
+                <option value="Starter">Starter Campus — ₹2,499 / month (Up to 1,000 Students)</option>
+                <option value="Enterprise">Institutional Enterprise — ₹12,999 / month (Unlimited + NAAC Reports)</option>
               </select>
             </div>
           </div>
@@ -221,6 +221,21 @@
 
   <script src="js/api.js?v=20261031_3"></script>
   <script>
+    // Pre-select plan from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const reqPlan = urlParams.get('plan');
+    if (reqPlan) {
+      const selectEl = document.getElementById('plan-select');
+      if (selectEl) {
+        for (let i = 0; i < selectEl.options.length; i++) {
+          if (selectEl.options[i].value.toLowerCase() === reqPlan.toLowerCase()) {
+            selectEl.selectedIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
     const form = document.getElementById('subscribe-form');
     const submitBtn = document.getElementById('submit-btn');
     const btnText = document.getElementById('btn-text');

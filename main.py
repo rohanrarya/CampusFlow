@@ -20,6 +20,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Security & Rate Limiting Middleware ───────────────────────
+import time
+from collections import defaultdict
+from fastapi.responses import JSONResponse
+
+_RATE_LIMIT_BUCKET = defaultdict(list)
+_RATE_LIMITS = {
+    "/api/v1/super-admin/login": (15, 60),  # 15 attempts / 60 seconds
+    "/api/v1/admin/login": (15, 60),        # 15 attempts / 60 seconds
+    "/api/v1/members/verify": (60, 60),     # 60 verify requests / 60 seconds
+}
+
+@app.middleware("http")
+async def security_and_rate_limit_middleware(request: Request, call_next):
+    # 1. Rate Limiting Check
+    path = request.url.path
+    client_ip = request.client.host if request.client else "unknown"
+
+    for prefix, (max_reqs, window_secs) in _RATE_LIMITS.items():
+        if path.startswith(prefix):
+            now = time.time()
+            key = f"{client_ip}:{prefix}"
+            timestamps = [t for t in _RATE_LIMIT_BUCKET[key] if now - t < window_secs]
+            if len(timestamps) >= max_reqs:
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Too many requests. Please wait a minute before trying again."}
+                )
+            timestamps.append(now)
+            _RATE_LIMIT_BUCKET[key] = timestamps
+            break
+
+    # 2. Process Request
+    response = await call_next(request)
+
+    # 3. OWASP Recommended Security Headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 # ── Mount Static Files & Templates ────────────────────────────
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/css", StaticFiles(directory="static/css"), name="css")
