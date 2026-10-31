@@ -345,3 +345,28 @@ async def import_members_csv(
         }
     except Exception as err:
         raise HTTPException(status_code=400, detail=f"Failed to parse CSV: {err}")
+
+
+# ── Webhook: Real-Time Auto Sync from Google Sheets ──────────────
+
+@router.post("/webhook/sheet-sync/{school_id}")
+@router.get("/webhook/sheet-sync/{school_id}")
+def webhook_sheet_sync(
+    school_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Public webhook endpoint callable by Google Apps Script onChange / onEdit trigger.
+    Whenever a row is added, edited, or deleted in the Google Sheet,
+    Google Apps Script pings this endpoint to instantly update CampusFlow's roster.
+    """
+    cfg = get_school_spreadsheet_config(db, school_id=school_id)
+    target_url = cfg.get("google_sheet_url") or cfg.get("google_sheet_webhook_url")
+    if not target_url:
+        return {"success": False, "message": f"No sheet URL configured for school {school_id}"}
+
+    try:
+        result = sync_from_google_sheet(db, target_url, school_id=school_id)
+        return {"success": True, "school_id": school_id, "sync": result}
+    except Exception as err:
+        return {"success": False, "error": str(err)}

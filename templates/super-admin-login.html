@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Admin Login — CampusFlow</title>
+  <meta name="description" content="Platform Owner & Master Super Admin Portal for CampusFlow." />
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
+  <link rel="stylesheet" href="css/style.css?v=20261031_3" />
+</head>
+<body style="background: #f8fafc;">
+
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="assets/logo.svg" alt="CampusFlow Logo" class="auth-logo-img" width="56" height="56" />
+        <h1 class="brand-name" style="font-size: 1.6rem;">Campus<span class="brand-flow">Flow</span></h1>
+        <div style="margin-top: 6px;">
+          <span class="role-pill" style="background:#fee2e2; color:#991b1b; border-color:#fca5a5; font-size:0.75rem; padding:3px 10px;">
+            PLATFORM SUPER ADMIN
+          </span>
+        </div>
+        <p style="margin-top: 8px;">Master Portal — Platform Owner Login</p>
+      </div>
+
+      <!-- Error alert -->
+      <div class="auth-error" id="login-error" role="alert" style="display:none; align-items:center; gap:8px;">
+        <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" style="color:var(--danger);"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span class="error-msg">Invalid Super Admin credentials.</span>
+      </div>
+
+      <form id="super-login-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="username">
+            Master Admin Username <span class="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="username"
+            class="form-control"
+            placeholder="Enter master username"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">
+            Master Password <span class="required">*</span>
+          </label>
+          <input
+            type="password"
+            id="password"
+            class="form-control"
+            placeholder="Enter master password"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <button class="btn btn-primary btn-full" type="submit" id="login-btn" style="min-height: 44px; margin-top: 8px;">
+          <span id="login-btn-text" style="display:inline-flex; align-items:center; gap:6px;">
+            Sign In to Master Control
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" style="stroke:#fff;"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </button>
+
+        <div style="margin-top: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 9px 12px; font-size: 0.8rem; color: #475569; text-align: center;">
+          Default Master Login: <strong style="color:#0f172a;">admin</strong> / <strong style="color:#0f172a;">admin123</strong>
+        </div>
+      </form>
+
+      <div style="text-align: center; margin-top: 24px; font-size: 0.86rem;">
+        <span style="color: #64748b;">Are you a school administrator?</span><br />
+        <a href="school-login.html" style="color: #2563eb; font-weight: 600; text-decoration: underline;">
+          Go to School Admin Login &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('super-login-form');
+    const errBox = document.getElementById('login-error');
+    const loginBtn = document.getElementById('login-btn');
+    const btnText = document.getElementById('login-btn-text');
+
+    if (sessionStorage.getItem('cf_super_token')) {
+      window.location.href = 'super-admin.html';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        showError('Please enter both username and password.');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      btnText.innerHTML = '<span class="btn-spinner"></span> Authenticating…';
+      if (errBox) errBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/v1/super-admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || 'Authentication failed');
+        }
+
+        sessionStorage.setItem('cf_super_token', data.token);
+        sessionStorage.setItem('cf_super_username', data.username || username);
+        window.location.href = 'super-admin.html';
+      } catch (err) {
+        showError(err.message || 'Invalid Super Admin credentials.');
+      } finally {
+        loginBtn.disabled = false;
+        btnText.innerHTML = 'Sign In to Master Control <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" style="stroke:#fff;"><polyline points="9 18 15 12 9 6"/></svg>';
+      }
+    });
+
+    function showError(msg) {
+      if (!errBox) return;
+      errBox.querySelector('.error-msg').textContent = msg;
+      errBox.style.display = 'flex';
+    }
+  </script>
+</body>
+</html>

@@ -6,7 +6,7 @@
   <title>Admin Dashboard — CampusFlow</title>
   <meta name="description" content="CampusFlow admin dashboard — manage complaints and campus members roster." />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=20261031_3" />
 </head>
 <body>
 
@@ -323,6 +323,9 @@
               <div class="form-hint" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
                 Allows CampusFlow to write new students directly back to your Google Sheet rows.
               </div>
+              <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:8px 12px; margin-top:8px; font-size:0.78rem; color:#92400e; line-height:1.4;">
+                <strong>Important for Google Apps Script:</strong> When deploying your Apps Script, select <em>'Who has access' &rarr; 'Anyone'</em> (not 'Only myself') so CampusFlow's cloud server can sync your roster.
+              </div>
             </div>
 
             <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:var(--radius); padding:10px 14px; font-size:0.8rem; color:var(--text-muted); margin-bottom:18px; line-height:1.5;">
@@ -347,7 +350,7 @@
   </div>
 
   <!-- ══ Scripts ═════════════════════════════════════════════ -->
-  <script src="js/api.js"></script>
-  <script src="js/admin.js"></script>
+  <script src="js/api.js?v=20261031_3"></script>
+  <script src="js/admin.js?v=20261031_3"></script>
 </body>
 </html>

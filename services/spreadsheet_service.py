@@ -229,12 +229,21 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
         raise ValueError(f"Network error connecting to Google Sheets: {url_err.reason}")
 
     if not rows:
+        # Sheet returned 0 rows: prune all existing members for this school so deleted members don't linger
+        old_members = db.scalars(select(Member).where(Member.school_id == school_id)).all()
+        pruned_count = len(old_members)
+        for m in old_members:
+            db.delete(m)
+        db.commit()
+        set_school_spreadsheet_config(db, school_id, sheet_url, sheet_url if "/exec" in sheet_url else "")
+        set_setting(db, f"last_synced_at_{school_id}", get_ist_time())
         return {
             "success": True,
             "added": 0,
             "updated": 0,
+            "pruned": pruned_count,
             "total_synced": 0,
-            "message": "Connected successfully! 0 student rows found in sheet.",
+            "message": f"Sync complete: 0 rows found in sheet (pruned {pruned_count} deleted members).",
             "timestamp": get_ist_time()
         }
 
@@ -301,12 +310,11 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
 
     # Prune members for this specific school that are no longer in the spreadsheet
     deleted_count = 0
-    if sheet_ids:
-        school_members = db.scalars(select(Member).where(Member.school_id == school_id)).all()
-        for m in school_members:
-            if m.college_id.strip().upper() not in sheet_ids:
-                db.delete(m)
-                deleted_count += 1
+    school_members = db.scalars(select(Member).where(Member.school_id == school_id)).all()
+    for m in school_members:
+        if m.college_id.strip().upper() not in sheet_ids:
+            db.delete(m)
+            deleted_count += 1
 
     db.commit()
 

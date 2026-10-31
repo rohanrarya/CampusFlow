@@ -88,3 +88,23 @@ def render_admin_dashboard(request: Request):
 @app.get("/subscribe.html")
 def render_subscribe(request: Request):
     return templates.TemplateResponse(request=request, name="subscribe.html")
+
+@app.get('/school-login')
+@app.get('/school-login.html')
+def render_school_login(request: Request):
+    return templates.TemplateResponse(request=request, name='school-login.html')
+
+@app.get('/school-dashboard')
+@app.get('/school-dashboard.html')
+def render_school_dashboard(request: Request):
+    return templates.TemplateResponse(request=request, name='admin-dashboard.html')
+
+@app.get('/super-admin-login')
+@app.get('/super-admin-login.html')
+def render_super_admin_login(request: Request):
+    return templates.TemplateResponse(request=request, name='super-admin-login.html')
+
+@app.get('/super-admin')
+@app.get('/super-admin.html')
+def render_super_admin(request: Request):
+    return templates.TemplateResponse(request=request, name='super-admin.html')

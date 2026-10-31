@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>School Administrator Login — CampusFlow</title>
+  <meta name="description" content="School Administrator Portal login for CampusFlow." />
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
+  <link rel="stylesheet" href="css/style.css?v=20261031_3" />
+</head>
+<body style="background: #f8fafc;">
+
+  <div class="auth-page">
+    <div class="auth-card">
+
+      <div class="auth-logo">
+        <img src="assets/logo.svg" alt="CampusFlow Logo" class="auth-logo-img" width="56" height="56" />
+        <h1 class="brand-name" style="font-size: 1.6rem;">Campus<span class="brand-flow">Flow</span></h1>
+        <div style="margin-top: 6px;">
+          <span class="role-pill" style="background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; font-size:0.75rem; padding:3px 10px;">
+            INSTITUTIONAL PORTAL
+          </span>
+        </div>
+        <p style="margin-top: 8px;">School Administrator Sign In</p>
+      </div>
+
+      <div class="auth-error" id="login-error" role="alert" style="display:none; align-items:center; gap:8px;">
+        <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" style="color:var(--danger);"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span class="error-msg">Invalid credentials. Please try again.</span>
+      </div>
+
+      <form id="school-login-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="username">
+            Admin Username or Email <span class="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="username"
+            class="form-control"
+            placeholder="Enter school admin username or email"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">
+            Password <span class="required">*</span>
+          </label>
+          <div style="position:relative;">
+            <input
+              type="password"
+              id="password"
+              class="form-control"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+              required
+              style="padding-right: 48px;"
+            />
+            <button
+              type="button"
+              id="toggle-password"
+              aria-label="Toggle password visibility"
+              style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--text-muted); padding:4px;"
+            >
+              <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" type="submit" id="login-btn" style="min-height: 44px; margin-top: 8px;">
+          <span id="login-btn-text" style="display:inline-flex; align-items:center; gap:6px;">
+            Sign In to School Portal
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" style="stroke:#fff;"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </button>
+
+        <!-- Google Sign-In Button Placeholder -->
+        <div id="google-signin-wrap" style="margin-top: 14px; text-align: center;">
+          <button type="button" id="google-signin-btn" class="btn btn-secondary btn-full" style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-weight: 500; font-size: 0.9rem; padding: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            Sign in with Google
+          </button>
+        </div>
+
+        <div style="margin-top: 14px; text-align: center; font-size: 0.8rem; color: #64748b;">
+          Haven't registered your school yet?
+          <a href="subscribe.html" style="color: #2563eb; font-weight: 600; text-decoration: underline;">
+            Start 14-Day Free Trial
+          </a>
+        </div>
+      </form>
+
+      <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 0.82rem;">
+        <span style="color: #64748b;">Platform Owner / Super Administrator?</span><br />
+        <a href="super-admin-login.html" style="color: #0f172a; font-weight: 700; text-decoration: underline;">
+          Master Admin Portal &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js?v=20261031_3"></script>
+  <script src="js/admin.js?v=20261031_3"></script>
+  <script>
+    // Toggle password view
+    const toggleBtn = document.getElementById('toggle-password');
+    const pwdInput = document.getElementById('password');
+    if (toggleBtn && pwdInput) {
+      toggleBtn.addEventListener('click', () => {
+        const isPwd = pwdInput.type === 'password';
+        pwdInput.type = isPwd ? 'text' : 'password';
+      });
+    }
+
+    // Google Sign in trigger
+    document.getElementById('google-signin-btn').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/v1/auth/google/url');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url) {
+            window.location.href = data.url;
+            return;
+          }
+        }
+        alert('Google Sign-In is configured. Please provide your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the environment.');
+      } catch (e) {
+        alert('Google OAuth service is initializing. Please use username and password login.');
+      }
+    });
+
+    // Form submit
+    const schoolForm = document.getElementById('school-login-form');
+    schoolForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('login-btn');
+      const errBox = document.getElementById('login-error');
+
+      if (!username || !password) {
+        errBox.querySelector('.error-msg').textContent = 'Please enter both username and password.';
+        errBox.style.display = 'flex';
+        return;
+      }
+
+      btn.disabled = true;
+      document.getElementById('login-btn-text').innerHTML = '<span class="btn-spinner"></span> Signing in…';
+      errBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/v1/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Login failed');
+
+        sessionStorage.setItem('cf_token', data.token);
+        sessionStorage.setItem('cf_username', data.username);
+        if (data.school_name) sessionStorage.setItem('cf_school_name', data.school_name);
+        if (data.school_id) sessionStorage.setItem('cf_school_id', data.school_id);
+        if (data.school_code) sessionStorage.setItem('cf_school_code', data.school_code);
+
+        window.location.href = 'school-dashboard.html';
+      } catch (err) {
+        errBox.querySelector('.error-msg').textContent = err.message || 'Invalid credentials. Please try again.';
+        errBox.style.display = 'flex';
+      } finally {
+        btn.disabled = false;
+        document.getElementById('login-btn-text').innerHTML = 'Sign In to School Portal <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" style="stroke:#fff;"><polyline points="9 18 15 12 9 6"/></svg>';
+      }
+    });
+  </script>
+</body>
+</html>
