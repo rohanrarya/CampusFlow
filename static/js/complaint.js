@@ -515,14 +515,11 @@ function initComplaintForm() {
 
     try {
       // Pass the Base64 photo and status callback to update button text dynamically
-      const anonToggle = document.getElementById('anonymous-toggle');
-      const isAnonymous = anonToggle ? anonToggle.checked : false;
-
       const ticket = await submitComplaint(complaintText, capturedPhotoBase64, (status) => {
         if (btnText) {
           btnText.innerHTML = `<span class="btn-spinner"></span> ${status}`;
         }
-      }, verifiedMember.college_id, isAnonymous);
+      }, verifiedMember.college_id);
       displayResult(ticket);
       showToast('Complaint submitted successfully!', 'success');
 
