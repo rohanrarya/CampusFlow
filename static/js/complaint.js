@@ -1,54 +1,4 @@
 
-/* ── School Selection & Multi-Tenant Support ─────────────── */
-let activeSchools = [];
-
-async function loadSchoolSelector() {
-  const selectEl = document.getElementById('school-select');
-  if (!selectEl) return;
-
-  try {
-    const list = await fetchSchoolsList();
-    activeSchools = list || [];
-    selectEl.innerHTML = '';
-
-    if (activeSchools.length === 0) {
-      selectEl.innerHTML = '<option value="1">Main Campus (Default)</option>';
-      return;
-    }
-
-    if (activeSchools.length > 1) {
-      const defaultOpt = document.createElement('option');
-      defaultOpt.value = '';
-      defaultOpt.textContent = 'Select your School or College...';
-      selectEl.appendChild(defaultOpt);
-    }
-
-    activeSchools.forEach((s) => {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = `${s.name} (${s.code})`;
-      selectEl.appendChild(opt);
-    });
-
-    // Check URL parameters for pre-selected school (?school=CODE or ?school_id=ID)
-    const urlParams = new URLSearchParams(window.location.search);
-    const paramCode = urlParams.get('school');
-    const paramId = urlParams.get('school_id');
-
-    if (paramId) {
-      selectEl.value = paramId;
-    } else if (paramCode) {
-      const match = activeSchools.find(s => s.code.toUpperCase() === paramCode.toUpperCase());
-      if (match) selectEl.value = match.id;
-    } else if (activeSchools.length === 1) {
-      selectEl.value = activeSchools[0].id;
-    }
-  } catch (err) {
-    console.warn('Failed to load schools list:', err);
-    selectEl.innerHTML = '<option value="1">Main Campus (Default)</option>';
-  }
-}
-
 /**
  * CampusFlow — Complaint Form Handler (complaint.js)
  * Handles form submission, result display, and toast notifications.
@@ -402,27 +352,10 @@ function showPhotoPreview(base64) {
 let verifiedMember = null;
 
 function initCollegeIdVerification() {
-  loadSchoolSelector();
+  
 
   const idInput = document.getElementById('college-id-input');
-  const schoolSelect = document.getElementById('school-select');
-
-  if (schoolSelect) {
-    schoolSelect.addEventListener('change', () => {
-      verifiedMember = null;
-      const box = document.getElementById('college-id-box');
-      const resultWrap = document.getElementById('verified-result-wrap');
-      const errorWrap = document.getElementById('id-error-wrap');
-      const submitBtn = document.getElementById('submit-btn');
-      if (box) box.classList.remove('verified', 'error');
-      if (resultWrap) resultWrap.style.display = 'none';
-      if (errorWrap) errorWrap.style.display = 'none';
-      if (submitBtn) submitBtn.style.opacity = '0.7';
-
-      if (idInput && idInput.value.trim().length >= 3) {
-        performVerification(idInput.value.trim());
-      }
-    });
+  
   }
   const verifyBtn = document.getElementById('id-verify-btn');
   const btnText = document.getElementById('id-verify-btn-text');
@@ -458,9 +391,7 @@ function initCollegeIdVerification() {
     if (verifyBtn) verifyBtn.disabled = true;
 
     try {
-      const schoolSelect = document.getElementById('school-select');
-      const schoolId = schoolSelect && schoolSelect.value ? schoolSelect.value : null;
-      const res = await verifyMemberCollegeId(cleanId, schoolId);
+      const res = await verifyMemberCollegeId(cleanId);
       if (res && res.verified && res.member) {
         verifiedMember = res.member;
         if (box) { box.classList.add('verified'); box.classList.remove('error'); }
@@ -584,9 +515,6 @@ function initComplaintForm() {
 
     try {
       // Pass the Base64 photo and status callback to update button text dynamically
-      const schoolSelect = document.getElementById('school-select');
-      const schoolId = (schoolSelect && schoolSelect.value) ? schoolSelect.value : (verifiedMember.school_id || 1);
-
       const anonToggle = document.getElementById('anonymous-toggle');
       const isAnonymous = anonToggle ? anonToggle.checked : false;
 
@@ -594,7 +522,7 @@ function initComplaintForm() {
         if (btnText) {
           btnText.innerHTML = `<span class="btn-spinner"></span> ${status}`;
         }
-      }, verifiedMember.college_id, schoolId, isAnonymous);
+      }, verifiedMember.college_id, isAnonymous);
       displayResult(ticket);
       showToast('Complaint submitted successfully!', 'success');
 

@@ -131,9 +131,6 @@ function initLoginPage() {
       const data = await adminLogin(username, password);
       sessionStorage.setItem('cf_token', data.token || 'authenticated');
       sessionStorage.setItem('cf_username', data.username || username);
-      if (data.school_name) sessionStorage.setItem('cf_school_name', data.school_name);
-      if (data.school_id) sessionStorage.setItem('cf_school_id', data.school_id);
-      if (data.school_code) sessionStorage.setItem('cf_school_code', data.school_code);
       window.location.href = 'admin-dashboard.html';
     } catch (err) {
       showLoginError(err.message || 'Invalid credentials. Please try again.');
@@ -160,6 +157,15 @@ let activeUrgencyFilter = 'all';
 let currentView = 'table'; // 'table' or 'cards'
 
 function initDashboardPage() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const qToken = urlParams.get('token');
+  if (qToken) {
+    sessionStorage.setItem('cf_token', qToken);
+    const qEmail = urlParams.get('email');
+    if (qEmail) sessionStorage.setItem('cf_username', qEmail);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   /* Auth guard */
   const token = sessionStorage.getItem('cf_token');
   if (!token) {
@@ -171,11 +177,7 @@ function initDashboardPage() {
   const adminNameEl = document.getElementById('admin-name');
   if (adminNameEl) adminNameEl.textContent = sessionStorage.getItem('cf_username') || 'Admin';
 
-  const schoolBadgeEl = document.getElementById('admin-school-badge');
-  const storedSchoolName = sessionStorage.getItem('cf_school_name');
-  if (schoolBadgeEl && storedSchoolName) {
-    schoolBadgeEl.textContent = storedSchoolName;
-  }
+
 
   /* Logout */
   const logoutBtn = document.getElementById('logout-btn');

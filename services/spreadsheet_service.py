@@ -1,7 +1,6 @@
 """
 CampusFlow — Spreadsheet Service (services/spreadsheet_service.py)
-Multi-tenant helper for managing campus members and syncing with Google Sheets.
-Each school has its own isolated Google Sheet, roster, and webhook.
+Simple, robust helper for managing campus members and syncing with Google Sheets / Excel.
 """
 
 import csv
@@ -14,7 +13,6 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from models.member import Member, AppSetting
-from models.school import School
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -22,44 +20,7 @@ def get_ist_time():
     return datetime.now(IST).strftime("%Y-%m-%d %I:%M %p IST")
 
 
-# ── School Spreadsheet Config Storage ───────────────────────────
-
-def get_school_spreadsheet_config(db: Session, school_id: int = 1) -> dict:
-    """Read spreadsheet configuration for a specific school."""
-    school = db.scalar(select(School).where(School.id == school_id))
-    if school:
-        return {
-            "google_sheet_url": school.google_sheet_url or "",
-            "google_sheet_webhook_url": school.google_sheet_webhook_url or "",
-            "school_name": school.name,
-            "school_code": school.code,
-            "last_synced_at": get_setting(db, f"last_synced_at_{school_id}", "Never")
-        }
-    # Fallback to general app_settings
-    return {
-        "google_sheet_url": get_setting(db, "google_sheet_url", ""),
-        "google_sheet_webhook_url": get_setting(db, "google_sheet_webhook_url", ""),
-        "school_name": "Main Campus",
-        "school_code": "DEFAULT",
-        "last_synced_at": get_setting(db, "last_synced_at", "Never")
-    }
-
-def set_school_spreadsheet_config(db: Session, school_id: int, sheet_url: str, webhook_url: str):
-    """Save spreadsheet URLs to a specific school's record."""
-    school = db.scalar(select(School).where(School.id == school_id))
-    if school:
-        school.google_sheet_url = sheet_url.strip() if sheet_url else None
-        school.google_sheet_webhook_url = webhook_url.strip() if webhook_url else None
-        db.commit()
-    # Also update global settings for backwards compatibility
-    if school_id == 1:
-        if sheet_url:
-            set_setting(db, "google_sheet_url", sheet_url)
-        if webhook_url:
-            set_setting(db, "google_sheet_webhook_url", webhook_url)
-
-
-# ── Simple Global Settings Storage ──────────────────────────────
+# ── Simple Settings Storage ──────────────────────────────────────
 
 def get_setting(db: Session, key: str, default: str = "") -> str:
     """Read a setting from database."""
@@ -77,27 +38,24 @@ def set_setting(db: Session, key: str, value: str):
     db.commit()
 
 
-# ── Member Database Helpers (Scoped by School) ─────────────────
+# ── Member Database Helpers ──────────────────────────────────────
 
-def get_member_by_college_id(db: Session, college_id: str, school_id: int | None = None):
+def get_member_by_college_id(db: Session, college_id: str):
     """
-    Search for a member by College ID (case-insensitive), optionally scoped to school_id.
+    Search for a member by College ID (case-insensitive).
     """
     if not college_id:
         return None
     clean_id = college_id.strip()
-    query = select(Member).where(Member.college_id.ilike(clean_id))
-    if school_id:
-        query = query.where(Member.school_id == school_id)
-    return db.scalar(query)
+    return db.scalar(
+        select(Member).where(Member.college_id.ilike(clean_id))
+    )
 
-def get_all_members(db: Session, search: str = "", school_id: int | None = None):
+def get_all_members(db: Session, search: str = ""):
     """
-    Get all registered college members for a school, with optional search.
+    Get all registered college members, with optional search.
     """
     query = select(Member).order_by(Member.id.desc())
-    if school_id:
-        query = query.where(Member.school_id == school_id)
     if search:
         pattern = f"%{search.strip()}%"
         query = query.where(
@@ -108,25 +66,13 @@ def get_all_members(db: Session, search: str = "", school_id: int | None = None)
         )
     return db.scalars(query).all()
 
-def add_or_update_member(
-    db: Session,
-    college_id: str,
-    name: str,
-    department: str = "",
-    email: str = "",
-    role: str = "student",
-    school_id: int = 1
-):
+def add_or_update_member(db: Session, college_id: str, name: str, department: str = "", email: str = "", role: str = "student"):
     """
-    Add a new member or update an existing member for a specific school.
+    Add a new member or update an existing member.
     """
     clean_id = college_id.strip()
-    query = select(Member).where(Member.college_id.ilike(clean_id))
-    if school_id:
-        query = query.where(Member.school_id == school_id)
-
-    existing = db.scalar(query)
-
+    existing = db.scalar(select(Member).where(Member.college_id.ilike(clean_id)))
+    
     if existing:
         existing.name = name.strip()
         if department:
@@ -144,23 +90,19 @@ def add_or_update_member(
             name=name.strip(),
             department=department.strip() if department else "General",
             email=email.strip() if email else None,
-            role=role.strip().lower() if role else "student",
-            school_id=school_id
+            role=role.strip().lower() if role else "student"
         )
         db.add(new_member)
         db.commit()
         db.refresh(new_member)
         return new_member
 
-def delete_member_by_college_id(db: Session, college_id: str, school_id: int | None = None):
+def delete_member_by_college_id(db: Session, college_id: str):
     """
-    Delete a member by college ID within a specific school.
+    Delete a member by college ID.
     """
     clean_id = college_id.strip()
-    query = select(Member).where(Member.college_id.ilike(clean_id))
-    if school_id:
-        query = query.where(Member.school_id == school_id)
-    member = db.scalar(query)
+    member = db.scalar(select(Member).where(Member.college_id.ilike(clean_id)))
     if member:
         db.delete(member)
         db.commit()
@@ -171,7 +113,10 @@ def delete_member_by_college_id(db: Session, college_id: str, school_id: int | N
 # ── Google Sheets Integration Helpers ───────────────────────────
 
 def extract_sheet_id(url_or_id: str) -> str:
-    """Extract Google Sheet ID from URL."""
+    """
+    Extract the Google Sheet ID from a full Google Sheets URL.
+    Example: https://docs.google.com/spreadsheets/d/1BxiMVs.../edit -> 1BxiMVs...
+    """
     if not url_or_id:
         return ""
     text = url_or_id.strip()
@@ -180,10 +125,10 @@ def extract_sheet_id(url_or_id: str) -> str:
         return match.group(1)
     return text
 
-def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
+def sync_from_google_sheet(db: Session, sheet_url: str):
     """
-    Fetch members from Google Sheets for a specific school.
-    Parses rows, updates the school's members roster, and prunes stale records.
+    Fetch members from Google Sheets (via CSV export or Apps Script Webhook).
+    Parses rows, updates the database roster, and prunes deleted records.
     """
     if not sheet_url or not sheet_url.strip():
         raise ValueError("Please provide a Google Sheet URL or Webhook in Sheet Settings.")
@@ -192,25 +137,29 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
     rows = []
 
     try:
-        if "/exec" in url or "script.google.com" in url:
+        # 1. If it's a Google Apps Script Webhook (ends in /exec)
+        if "script.google.com" in url or "/exec" in url:
             req = urllib.request.Request(
                 url,
                 headers={"User-Agent": "CampusFlow/1.0", "Accept": "application/json"}
             )
-            with urllib.request.urlopen(req, timeout=12) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw_body = resp.read().decode("utf-8")
+                try:
+                    data = json.loads(raw_body)
+                except Exception:
+                    data = []
                 if isinstance(data, list):
                     rows = data
                 elif isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
                     rows = data["data"]
+
+        # 2. Direct Google Sheets CSV export
         else:
             sheet_id = extract_sheet_id(url)
             csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-            req = urllib.request.Request(
-                csv_url,
-                headers={"User-Agent": "CampusFlow/1.0"}
-            )
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            req = urllib.request.Request(csv_url, headers={"User-Agent": "CampusFlow/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 raw_bytes = resp.read()
                 content = raw_bytes.decode("utf-8-sig", errors="replace")
                 reader = csv.DictReader(io.StringIO(content))
@@ -218,9 +167,7 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
 
     except urllib.error.HTTPError as http_err:
         if http_err.code in [401, 403]:
-            raise ValueError(
-                "Access Denied: In your Google Apps Script, set 'Who has access' to 'Anyone' and redeploy."
-            )
+            raise ValueError("Access Denied: In your Google Apps Script, set 'Who has access' to 'Anyone' and redeploy. For Google Sheet, set sharing to 'Anyone with link can view'.")
         elif http_err.code == 404:
             raise ValueError("Google Sheet not found. Please verify the sheet link in Sheet Settings.")
         else:
@@ -228,15 +175,15 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
     except urllib.error.URLError as url_err:
         raise ValueError(f"Network error connecting to Google Sheets: {url_err.reason}")
 
+    # If sheet is empty (or all rows were deleted): prune all members
     if not rows:
-        # Sheet returned 0 rows: prune all existing members for this school so deleted members don't linger
-        old_members = db.scalars(select(Member).where(Member.school_id == school_id)).all()
-        pruned_count = len(old_members)
-        for m in old_members:
+        all_members = db.scalars(select(Member)).all()
+        pruned_count = len(all_members)
+        for m in all_members:
             db.delete(m)
         db.commit()
-        set_school_spreadsheet_config(db, school_id, sheet_url, sheet_url if "/exec" in sheet_url else "")
-        set_setting(db, f"last_synced_at_{school_id}", get_ist_time())
+        set_setting(db, "google_sheet_url", sheet_url)
+        set_setting(db, "last_synced_at", get_ist_time())
         return {
             "success": True,
             "added": 0,
@@ -247,6 +194,7 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
             "timestamp": get_ist_time()
         }
 
+    # Match flexible column names and save into database
     added_count = 0
     updated_count = 0
     sheet_ids = set()
@@ -283,12 +231,7 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
         email = normalized.get("email") or normalized.get("emailid") or normalized.get("mail") or ""
         role = normalized.get("role") or normalized.get("type") or normalized.get("designation") or "student"
 
-        existing = db.scalar(
-            select(Member).where(
-                Member.college_id.ilike(clean_cid),
-                Member.school_id == school_id
-            )
-        )
+        existing = db.scalar(select(Member).where(Member.college_id.ilike(clean_cid)))
         if existing:
             existing.name = name
             existing.department = department
@@ -302,16 +245,15 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
                 name=name,
                 department=department,
                 email=email if email else None,
-                role=role.lower(),
-                school_id=school_id
+                role=role.lower()
             )
             db.add(new_mem)
             added_count += 1
 
-    # Prune members for this specific school that are no longer in the spreadsheet
+    # Prune members that are no longer in the spreadsheet
     deleted_count = 0
-    school_members = db.scalars(select(Member).where(Member.school_id == school_id)).all()
-    for m in school_members:
+    all_members = db.scalars(select(Member)).all()
+    for m in all_members:
         if m.college_id.strip().upper() not in sheet_ids:
             db.delete(m)
             deleted_count += 1
@@ -319,8 +261,8 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
     db.commit()
 
     # Save last sync time and sheet url
-    set_school_spreadsheet_config(db, school_id, sheet_url, sheet_url if "/exec" in sheet_url else "")
-    set_setting(db, f"last_synced_at_{school_id}", get_ist_time())
+    set_setting(db, "google_sheet_url", sheet_url)
+    set_setting(db, "last_synced_at", get_ist_time())
 
     return {
         "success": True,
@@ -333,7 +275,10 @@ def sync_from_google_sheet(db: Session, sheet_url: str, school_id: int = 1):
 
 
 def push_student_to_spreadsheet_webhook(webhook_url: str, member_data: dict) -> bool:
-    """Send new member to the school's private Google Apps Script Webhook."""
+    """
+    If admin set up a Google Apps Script Webhook, send the new member
+    so Google Sheets automatically appends a new row.
+    """
     if not webhook_url or not webhook_url.startswith("http"):
         return False
     try:

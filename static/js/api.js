@@ -78,7 +78,7 @@ async function uploadDirectToCloudinary(photoBlob) {
  * @param {string|null} collegeId - Verified College ID of the student/faculty
  * @returns {Promise<Object>} Ticket object
  */
-async function submitComplaint(text, photo = null, onStatusUpdate = null, collegeId = null, schoolId = null, isAnonymous = false) {
+async function submitComplaint(text, photo = null, onStatusUpdate = null, collegeId = null, isAnonymous = false) {
   let photoBlob = null;
   if (photo) {
     if (photo instanceof Blob || (typeof File !== 'undefined' && photo instanceof File)) {
@@ -107,9 +107,7 @@ async function submitComplaint(text, photo = null, onStatusUpdate = null, colleg
   if (collegeId) {
     formData.append('college_id', collegeId);
   }
-  if (schoolId) {
-    formData.append('school_id', schoolId);
-  }
+  
   if (isAnonymous) {
     formData.append('is_anonymous', 'true');
   }
@@ -324,14 +322,14 @@ async function adminLogin(username, password) {
  * @param {string} collegeId
  * @returns {Promise<Object>} { verified: boolean, member?: Object, message?: string }
  */
-async function verifyMemberCollegeId(collegeId, schoolId = null) {
+async function verifyMemberCollegeId(collegeId) {
   const cleanId = (collegeId || '').trim();
   if (!cleanId) {
     return { verified: false, message: 'Please enter a College ID.' };
   }
 
-  const query = schoolId ? `?school_id=${encodeURIComponent(schoolId)}` : '';
-  const response = await fetch(`${API_BASE}/members/verify/${encodeURIComponent(cleanId)}${query}`, {
+  
+  const response = await fetch(`${API_BASE}/members/verify/${encodeURIComponent(cleanId)}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -346,40 +344,7 @@ async function verifyMemberCollegeId(collegeId, schoolId = null) {
   return response.json();
 }
 
-/**
- * Fetch list of active subscribed schools
- * GET /schools/list
- * @returns {Promise<Array>}
- */
-async function fetchSchoolsList() {
-  try {
-    const response = await fetch(`${API_BASE}/schools/list`);
-    if (!response.ok) return [];
-    return await response.json();
-  } catch (e) {
-    console.warn('Could not fetch schools list:', e);
-    return [];
-  }
-}
 
-/**
- * Subscribe and onboard a new school
- * POST /schools/subscribe
- * @param {Object} data
- * @returns {Promise<Object>}
- */
-async function subscribeSchool(data) {
-  const response = await fetch(`${API_BASE}/schools/subscribe`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to complete school subscription');
-  }
-  return await response.json();
-}
 
 /**
  * Helper to get Admin Authorization header

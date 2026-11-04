@@ -6,7 +6,7 @@
   <title>CampusFlow — Campus Complaint Management</title>
   <meta name="description" content="Submit and track campus complaints quickly and easily with CampusFlow." />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-  <link rel="stylesheet" href="css/style.css?v=20261031_4" />
+  <link rel="stylesheet" href="css/style.css?v=20261104" />
 </head>
 <body>
 
@@ -20,19 +20,16 @@
       <a href="#how-it-works" class="nav-link">How It Works</a>
       <a href="#submit" class="nav-link">Submit Complaint</a>
       <a href="#recent-complaints" class="nav-link">Recent Issues</a>
-      <a href="#pricing" class="nav-link" style="font-weight:600; color:#2563eb;">Pricing (₹)</a>
-      <a href="school-login.html" class="nav-link" style="color:#0f172a; font-weight:600;">School Portal</a>
-      <a href="super-admin-login.html" class="btn-nav-admin" style="background:#0f172a;" title="Platform Owner Only">
+      <a href="complaints.html" class="nav-link">All Complaints</a>
+      <a href="admin-login.html" class="btn-nav-admin">
         <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        Super Admin
+        Admin Portal
       </a>
     </div>
   </nav>
 
   <!-- ══ Hero ════════════════════════════════════════════════ -->
   <section class="hero" id="home">
-    
-    
     <div class="hero-content" style="max-width: 760px;">
       <div class="hero-badge">
         <img src="assets/logo.svg" alt="" width="16" height="16" style="border-radius:4px; margin-right:4px;" />
@@ -57,17 +54,6 @@
           <div class="complaint-card-body">
             <form id="complaint-form" novalidate>
 
-              <!-- ══ School / College Selector ══ -->
-              <div class="form-group" id="school-select-wrap" style="margin-bottom: 18px;">
-                <label class="form-label" for="school-select" style="display:flex; justify-content:space-between; align-items:center;">
-                  <span>School / College <span class="required">*</span></span>
-                  <a href="subscribe.html" style="font-size:0.75rem; color:#2563eb; font-weight:600; text-decoration:underline;">Register New School</a>
-                </label>
-                <select id="school-select" class="form-control" style="font-weight: 500; font-size: 0.92rem;">
-                  <option value="">Select your School or College...</option>
-                </select>
-              </div>
-
               <!-- ══ College ID Verification (Auto-Fetch from Admin Spreadsheet) ══ -->
               <div class="college-id-box" id="college-id-box">
                 <label class="form-label" for="college-id-input" style="display:flex; justify-content:space-between; align-items:center;">
@@ -82,7 +68,7 @@
                     type="text"
                     id="college-id-input"
                     class="form-control"
-                    placeholder="Enter College ID (e.g. STD202601, FAC9901)"
+                    placeholder="Enter College ID (e.g. 3321, STD202601)"
                     maxlength="30"
                     autocomplete="off"
                     style="text-transform:uppercase;"
@@ -92,7 +78,7 @@
                   </button>
                 </div>
 
-                <!-- Verified Success State: Simple, clean, professional -->
+                <!-- Verified Success State: Simple, clean, high-contrast professional -->
                 <div id="verified-result-wrap" style="display:none; margin-top: 10px;">
                   <div class="verified-member-card">
                     <div class="verified-check-icon">
@@ -201,7 +187,7 @@
           </div>
         </div>
 
-                <!-- Quick Tips Bar -->
+        <!-- Quick Tips Bar -->
         <div class="quick-tips-bar">
           <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" style="color:#d97706; flex-shrink:0;"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
           <span><strong>Tip:</strong> Mention specific room numbers or campus locations for fastest resolution.</span>
@@ -314,123 +300,6 @@
     </div>
   </section>
 
-  
-  <!-- ══ India-Based Institutional Pricing ═════════════════════ -->
-  <section class="section" id="pricing" style="background: #f8fafc; padding: 75px 20px; border-top: 1px solid var(--border);">
-    <div class="section-container" style="max-width: 1160px; margin: 0 auto;">
-      <div class="section-header" style="text-align: center; margin-bottom: 45px;">
-        <span class="eyebrow" style="color:#2563eb; font-weight:700; text-transform:uppercase; letter-spacing:1px; font-size:0.78rem;">Affordable Institutional Pricing</span>
-        <h2 style="font-size:2.2rem; font-weight:800; color:#0f172a; margin-top:8px;">Built for Indian Schools & Universities</h2>
-        <p style="color:#475569; max-width:640px; margin:10px auto 0; font-size:1rem;">
-          Flat pricing in INR (₹) with zero per-student surcharges. Connect your institution's private Google Sheet in 60 seconds.
-        </p>
-      </div>
-
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; align-items: stretch;">
-
-        <!-- Plan 1: Starter Campus -->
-        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:32px 26px; display:flex; flex-direction:column; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
-          <div style="margin-bottom:18px;">
-            <span style="font-size:0.75rem; font-weight:700; background:#f1f5f9; color:#475569; padding:4px 10px; border-radius:20px; text-transform:uppercase;">Starter Campus</span>
-            <h3 style="font-size:1.4rem; font-weight:700; color:#0f172a; margin-top:12px;">Colleges & Institutes</h3>
-            <p style="font-size:0.85rem; color:#64748b; margin-top:4px;">Ideal for single-department or smaller campuses.</p>
-          </div>
-          <div style="margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid #f1f5f9;">
-            <div style="display:flex; align-items:baseline; gap:4px;">
-              <span style="font-size:2.4rem; font-weight:800; color:#0f172a;">₹2,499</span>
-              <span style="font-size:0.85rem; color:#64748b; font-weight:500;">/ month</span>
-            </div>
-            <div style="font-size:0.75rem; color:#16a34a; font-weight:600; margin-top:4px;">or ₹23,999/yr (Save 20%)</div>
-          </div>
-          <ul style="flex:1; display:flex; flex-direction:column; gap:12px; font-size:0.88rem; color:#334155; margin-bottom:28px;">
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> Up to 1,000 Students & Faculty</li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> 1 Private School Google Sheet</li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> Gemini AI Urgency & Dept Routing</li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> School Admin Portal & Ticket Tracker</li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> Standard Email Redressal Support</li>
-          </ul>
-          <a href="subscribe.html?plan=Starter" style="display:block; text-align:center; padding:12px 20px; background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; border-radius:8px; font-weight:600; font-size:0.92rem; text-decoration:none; transition:all 0.2s;">
-            Start 14-Day Free Trial
-          </a>
-        </div>
-
-        <!-- Plan 2: Campus Pro (Featured) -->
-        <div style="background:#ffffff; border:2px solid #2563eb; border-radius:12px; padding:32px 26px; display:flex; flex-direction:column; position:relative; box-shadow:0 12px 25px -4px rgba(37,99,235,0.15);">
-          <div style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:#2563eb; color:#ffffff; font-size:0.72rem; font-weight:700; padding:4px 14px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px;">
-            Most Popular in India
-          </div>
-          <div style="margin-bottom:18px;">
-            <span style="font-size:0.75rem; font-weight:700; background:#dbeafe; color:#1d4ed8; padding:4px 10px; border-radius:20px; text-transform:uppercase;">Campus Pro</span>
-            <h3 style="font-size:1.4rem; font-weight:700; color:#0f172a; margin-top:12px;">Full University / School</h3>
-            <p style="font-size:0.85rem; color:#64748b; margin-top:4px;">For established institutions needing automated 2-way sync.</p>
-          </div>
-          <div style="margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid #f1f5f9;">
-            <div style="display:flex; align-items:baseline; gap:4px;">
-              <span style="font-size:2.4rem; font-weight:800; color:#0f172a;">₹5,999</span>
-              <span style="font-size:0.85rem; color:#64748b; font-weight:500;">/ month</span>
-            </div>
-            <div style="font-size:0.75rem; color:#16a34a; font-weight:600; margin-top:4px;">or ₹57,999/yr (Save 20%)</div>
-          </div>
-          <ul style="flex:1; display:flex; flex-direction:column; gap:12px; font-size:0.88rem; color:#334155; margin-bottom:28px;">
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#2563eb; font-weight:700;">✓</span> <strong>Up to 5,000 Students & Faculty</strong></li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#2563eb; font-weight:700;">✓</span> <strong>2-Way Real-time Google Sheet Sync</strong></li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#2563eb; font-weight:700;">✓</span> AI Image & Evidence Verification</li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#2563eb; font-weight:700;">✓</span> UGC & AICTE Grievance Committee Ready</li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#2563eb; font-weight:700;">✓</span> Priority WhatsApp & Phone Redressal Support</li>
-          </ul>
-          <a href="subscribe.html?plan=CampusPro" style="display:block; text-align:center; padding:12px 20px; background:#2563eb; color:#ffffff; border-radius:8px; font-weight:600; font-size:0.92rem; text-decoration:none; box-shadow:0 4px 12px rgba(37,99,235,0.25);">
-            Get Started with Campus Pro
-          </a>
-        </div>
-
-        <!-- Plan 3: Enterprise -->
-        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:32px 26px; display:flex; flex-direction:column; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
-          <div style="margin-bottom:18px;">
-            <span style="font-size:0.75rem; font-weight:700; background:#f1f5f9; color:#475569; padding:4px 10px; border-radius:20px; text-transform:uppercase;">Institutional Enterprise</span>
-            <h3 style="font-size:1.4rem; font-weight:700; color:#0f172a; margin-top:12px;">Multi-Campus & Trust</h3>
-            <p style="font-size:0.85rem; color:#64748b; margin-top:4px;">For large university systems and education groups.</p>
-          </div>
-          <div style="margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid #f1f5f9;">
-            <div style="display:flex; align-items:baseline; gap:4px;">
-              <span style="font-size:2.4rem; font-weight:800; color:#0f172a;">₹12,999</span>
-              <span style="font-size:0.85rem; color:#64748b; font-weight:500;">/ month</span>
-            </div>
-            <div style="font-size:0.75rem; color:#16a34a; font-weight:600; margin-top:4px;">or ₹1,24,999/yr (Annual Invoice)</div>
-          </div>
-          <ul style="flex:1; display:flex; flex-direction:column; gap:12px; font-size:0.88rem; color:#334155; margin-bottom:28px;">
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> <strong>Unlimited Students & Faculty</strong></li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> Multi-Branch & Multi-Sheet Sync</li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> <strong>NAAC & UGC Grievance Redressal Audit Export</strong></li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> Dedicated Relationship Manager + 99.9% SLA</li>
-            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#16a34a; font-weight:700;">✓</span> NEFT, RTGS & Corporate GST Invoicing</li>
-          </ul>
-          <a href="subscribe.html?plan=Enterprise" style="display:block; text-align:center; padding:12px 20px; background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; border-radius:8px; font-weight:600; font-size:0.92rem; text-decoration:none;">
-            Contact Enterprise Team
-          </a>
-        </div>
-
-      </div>
-
-      <!-- Indian Compliance & Payment Trust Badge -->
-      <div style="margin-top:40px; background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:18px 24px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px;">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <span style="font-size:1.5rem;">🇮🇳</span>
-          <div>
-            <div style="font-weight:700; font-size:0.9rem; color:#0f172a;">Compliant with Indian Higher Education Norms</div>
-            <div style="font-size:0.78rem; color:#64748b;">Meets UGC & AICTE Grievance Redressal Regulations (2023). NAAC Criterion 5 compliant.</div>
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:16px; font-size:0.8rem; color:#475569; font-weight:500;">
-          <span>✓ UPI / PhonePe / GPay</span>
-          <span>✓ Netbanking (All Indian Banks)</span>
-          <span>✓ GST Invoicing & TDS Ready</span>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-
   <!-- ══ Ticket Detail Modal Popup ════════════════════════════ -->
   <div class="modal-overlay" id="home-modal-overlay">
     <div class="modal modal-detail" id="home-modal">
@@ -464,8 +333,8 @@
   </footer>
 
   <!-- ══ Scripts ═════════════════════════════════════════════ -->
-  <script src="js/api.js?v=20261031_4"></script>
+  <script src="js/api.js?v=20261104"></script>
   <script src="js/auth.js"></script>
-  <script src="js/complaint.js?v=20261031_4"></script>
+  <script src="js/complaint.js?v=20261104"></script>
 </body>
 </html>

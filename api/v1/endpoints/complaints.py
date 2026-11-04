@@ -14,24 +14,17 @@ from services.spreadsheet_service import get_member_by_college_id
 
 router = APIRouter()
 
-@router.get("/cloudinary-sign")
-def get_cloudinary_signature():
-    """
-    Generate signature for direct client-to-Cloudinary upload.
-    This bypasses Vercel/serverless payload limits (4.5MB).
-    """
-    if not CLOUDINARY_API_SECRET or not CLOUDINARY_API_KEY or not CLOUDINARY_CLOUD_NAME:
-        raise HTTPException(status_code=500, detail="Cloudinary credentials not configured")
-
+@router.get("/cloudinary-config")
+def get_cloudinary_config():
+    """Provides signature and timestamp for direct client-side uploads."""
     timestamp = int(time.time())
     params = {"timestamp": timestamp}
     signature = cloudinary.utils.api_sign_request(params, CLOUDINARY_API_SECRET)
-
     return {
-        "timestamp": timestamp,
-        "signature": signature,
+        "cloud_name": CLOUDINARY_CLOUD_NAME,
         "api_key": CLOUDINARY_API_KEY,
-        "cloud_name": CLOUDINARY_CLOUD_NAME
+        "timestamp": timestamp,
+        "signature": signature
     }
 
 @router.post("/complaint")
@@ -42,28 +35,26 @@ async def create_complaint(
     image_url: str | None = Form(None),
     submission_id: str = Form(...),
     college_id: str | None = Form(None),
-    school_id: int | None = Form(None),
     token: str | None = Form(None),
     is_anonymous: str | bool | None = Form(False),
+    school_id: int | None = Form(None),
     db: Session = Depends(get_db)
 ):
     anonymous_flag = str(is_anonymous).lower() in ["true", "1", "yes", "on"]
     submitted_by = "Campus Member"
     user_college_id = None
-    resolved_school_id = school_id or 1
 
-    # Priority 1: Direct College ID verification from school spreadsheet / roster
+    # Priority 1: Direct College ID verification from campus spreadsheet / roster
     if college_id and college_id.strip():
         clean_cid = college_id.strip()
-        member = get_member_by_college_id(db, clean_cid, school_id=school_id)
+        member = get_member_by_college_id(db, clean_cid)
         if not member:
             raise HTTPException(
                 status_code=400,
-                detail=f"Verification failed: College ID '{clean_cid}' is not registered in this school's directory."
+                detail=f"Verification failed: College ID '{clean_cid}' is not registered in the campus spreadsheet directory."
             )
         submitted_by = member.name
         user_college_id = member.college_id
-        resolved_school_id = member.school_id or resolved_school_id
 
     # Priority 2: Fallback to token if provided
     elif token or request.headers.get("Authorization"):
@@ -75,50 +66,25 @@ async def create_complaint(
         if user_token:
             payload = decode_access_token(user_token)
             if payload:
-                submitted_by = payload.get("name", "Campus Member")
+                submitted_by = payload.get("name") or payload.get("sub") or "Campus Member"
                 user_college_id = payload.get("sub")
-                if payload.get("school_id"):
-                    resolved_school_id = payload.get("school_id")
 
-    # If neither College ID nor token was provided, reject submission
-    if not user_college_id:
-        raise HTTPException(
-            status_code=400,
-            detail="College ID is required to submit a complaint. Please enter your registered ID."
-        )
-
-    exist_ticket = get_ticket_by_submission_id(db, submission_id)
-    if exist_ticket:
+    # Idempotency check
+    existing_ticket = get_ticket_by_submission_id(db, submission_id)
+    if existing_ticket:
         return {
-            "message": "This complaint has already been submitted",
-            "ticket": exist_ticket
+            "message": "Complaint already submitted",
+            "complaint": message,
+            "department": existing_ticket.get("department"),
+            "ticket": existing_ticket
         }
 
+    # AI complaint analysis
     analysis = analyze_complaint(message)
-    department = find_department(analysis.category.lower())
+    department = find_department(analysis.category)
 
-    # Case 1: Image already uploaded directly to Cloudinary from client
-    if image_url:
-        try:
-            req = urllib.request.Request(
-                image_url,
-                headers={"User-Agent": "CampusFlow/1.0"}
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                image_data = resp.read()
-            moderation = moderate_image(image_data)
-            if not moderation.allowed:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Image rejected: " + moderation.reason
-                )
-        except HTTPException:
-            raise
-        except Exception as img_err:
-            print(f"Could not moderate client-uploaded image: {img_err}")
-
-    # Case 2: Standard form-data file upload (fallback)
-    elif photo:
+    # Handle image upload if attached
+    if photo and photo.filename:
         image_data = await photo.read()
         moderation = moderate_image(image_data)
         if not moderation.allowed:
@@ -129,7 +95,7 @@ async def create_complaint(
         result = cloudinary.uploader.upload(image_data)
         image_url = result.get("secure_url")
 
-    # Create ticket in database with synchronized ticket details and school scoping
+    # Create ticket in database
     ticket = create_ticket(
         db,
         analysis=analysis,
@@ -138,7 +104,6 @@ async def create_complaint(
         submission_id=submission_id,
         submitted_by=submitted_by,
         user_college_id=user_college_id,
-        school_id=resolved_school_id,
         is_anonymous=anonymous_flag
     )
 

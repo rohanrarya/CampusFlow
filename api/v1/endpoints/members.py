@@ -13,8 +13,8 @@ from services.spreadsheet_service import (
     get_all_members,
     add_or_update_member,
     delete_member_by_college_id,
-    get_school_spreadsheet_config,
-    set_school_spreadsheet_config,
+    get_setting,
+    set_setting,
     sync_from_google_sheet,
     push_student_to_spreadsheet_webhook
 )
@@ -60,20 +60,16 @@ class SyncRequest(BaseModel):
 # ── Public Endpoint: Verify College ID ──────────────────────────
 
 @router.get("/members/verify/{college_id}")
-def verify_college_id(
-    college_id: str,
-    school_id: int | None = None,
-    db: Session = Depends(get_db)
-):
+def verify_college_id(college_id: str, db: Session = Depends(get_db)):
     """
     Auto-fetch verification for complaint submission form.
-    Checks if the entered college_id exists in the school's spreadsheet roster.
+    Checks if the entered college_id exists in the admin roster/spreadsheet.
     """
     clean_id = (college_id or "").strip()
     if not clean_id:
         raise HTTPException(status_code=400, detail="College ID is required.")
 
-    member = get_member_by_college_id(db, clean_id, school_id=school_id)
+    member = get_member_by_college_id(db, clean_id)
     if not member:
         return {
             "verified": False,
@@ -87,13 +83,12 @@ def verify_college_id(
             "name": member.name,
             "department": member.department or "General",
             "email": member.email or "",
-            "role": member.role or "student",
-            "school_id": member.school_id
+            "role": member.role or "student"
         }
     }
 
 
-# ── Admin Endpoints: Member Management (Scoped by School) ───────
+# ── Admin Endpoints: Member Management ──────────────────────────
 
 @router.get("/admin/members")
 def list_admin_members(
@@ -102,12 +97,10 @@ def list_admin_members(
     db: Session = Depends(get_db)
 ):
     """
-    List all members in the school's roster for Admin Dashboard.
+    List all members in roster for Admin Dashboard.
     """
-    payload = require_admin(request)
-    school_id = payload.get("school_id") or 1
-    members = get_all_members(db, search=search, school_id=school_id)
-
+    require_admin(request)
+    members = get_all_members(db, search=search)
     return [
         {
             "id": m.id,
@@ -116,7 +109,6 @@ def list_admin_members(
             "department": m.department or "General",
             "email": m.email or "",
             "role": m.role or "student",
-            "school_id": m.school_id,
             "created_at": m.created_at.isoformat() if m.created_at else None
         }
         for m in members
@@ -131,10 +123,9 @@ def add_admin_member(
 ):
     """
     Add a new student or faculty member via Admin UI.
-    Saves to the school's roster and pushes to the school's Google Sheet webhook.
+    Saves to database and sends to Google Sheets webhook if configured.
     """
-    payload = require_admin(request)
-    school_id = payload.get("school_id") or 1
+    require_admin(request)
 
     if not data.college_id or not data.college_id.strip():
         raise HTTPException(status_code=400, detail="College ID is required.")
@@ -147,13 +138,10 @@ def add_admin_member(
         name=data.name,
         department=data.department,
         email=data.email,
-        role=data.role,
-        school_id=school_id
+        role=data.role
     )
 
-    # Push to school's private Google Apps Script Webhook
-    cfg = get_school_spreadsheet_config(db, school_id=school_id)
-    webhook_url = cfg.get("google_sheet_webhook_url", "")
+    webhook_url = get_setting(db, "google_sheet_webhook_url", "")
     sheet_pushed = False
     if webhook_url:
         sheet_pushed = push_student_to_spreadsheet_webhook(
@@ -176,8 +164,7 @@ def add_admin_member(
             "name": member.name,
             "department": member.department,
             "email": member.email or "",
-            "role": member.role,
-            "school_id": member.school_id
+            "role": member.role
         },
         "sheet_pushed": sheet_pushed
     }
@@ -189,10 +176,11 @@ def delete_admin_member(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Delete a member from the school's campus roster."""
-    payload = require_admin(request)
-    school_id = payload.get("school_id") or 1
-    deleted = delete_member_by_college_id(db, college_id, school_id=school_id)
+    """
+    Delete a member from campus roster.
+    """
+    require_admin(request)
+    deleted = delete_member_by_college_id(db, college_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Member not found.")
     return {"success": True, "message": f"Member '{college_id}' removed."}
@@ -202,23 +190,20 @@ def delete_admin_member(
 
 @router.get("/admin/spreadsheet/config")
 def get_spreadsheet_config(request: Request, db: Session = Depends(get_db)):
-    """Get current school's Google Sheet settings and sync statistics."""
-    payload = require_admin(request)
-    school_id = payload.get("school_id") or 1
-    cfg = get_school_spreadsheet_config(db, school_id=school_id)
-
-    total_count = db.scalar(
-        select(func.count(Member.id)).where(Member.school_id == school_id)
-    ) or 0
+    """
+    Get current Google Sheet settings and sync statistics.
+    """
+    require_admin(request)
+    sheet_url = get_setting(db, "google_sheet_url", "")
+    webhook_url = get_setting(db, "google_sheet_webhook_url", "")
+    last_synced_at = get_setting(db, "last_synced_at", "Never")
+    total_members = db.scalar(select(func.count(Member.id))) or 0
 
     return {
-        "google_sheet_url": cfg.get("google_sheet_url", ""),
-        "google_sheet_webhook_url": cfg.get("google_sheet_webhook_url", ""),
-        "last_synced_at": cfg.get("last_synced_at", "Never"),
-        "total_members": total_count,
-        "school_id": school_id,
-        "school_name": cfg.get("school_name", "Main Campus"),
-        "school_code": cfg.get("school_code", "DEFAULT")
+        "google_sheet_url": sheet_url,
+        "webhook_url": webhook_url,
+        "last_synced_at": last_synced_at,
+        "total_members": total_members
     }
 
 
@@ -228,23 +213,13 @@ def save_spreadsheet_config(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Save Google Sheet link and Webhook URL for the current school."""
-    payload = require_admin(request)
-    school_id = payload.get("school_id") or 1
-
-    set_school_spreadsheet_config(
-        db,
-        school_id=school_id,
-        sheet_url=data.google_sheet_url.strip(),
-        webhook_url=data.webhook_url.strip()
-    )
-
-    return {
-        "success": True,
-        "message": "Spreadsheet configuration saved for your school.",
-        "google_sheet_url": data.google_sheet_url.strip(),
-        "google_sheet_webhook_url": data.webhook_url.strip()
-    }
+    """
+    Save Google Sheet URL and Apps Script Webhook URL.
+    """
+    require_admin(request)
+    set_setting(db, "google_sheet_url", data.google_sheet_url.strip())
+    set_setting(db, "google_sheet_webhook_url", data.webhook_url.strip())
+    return {"success": True, "message": "Spreadsheet configuration saved."}
 
 
 @router.post("/admin/spreadsheet/sync")
@@ -253,120 +228,104 @@ def trigger_spreadsheet_sync(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Trigger on-demand sync from Google Sheet for the current school."""
-    payload = require_admin(request)
-    school_id = payload.get("school_id") or 1
-
-    cfg = get_school_spreadsheet_config(db, school_id=school_id)
-    target_url = (
-        data.sheet_url.strip() or
-        cfg.get("google_sheet_url", "") or
-        cfg.get("google_sheet_webhook_url", "")
+    """
+    Trigger on-demand sync from Google Sheet into local database.
+    """
+    require_admin(request)
+    sheet_url = (
+        (data.sheet_url or "").strip()
+        or get_setting(db, "google_sheet_url", "")
+        or get_setting(db, "google_sheet_webhook_url", "")
     )
 
-    if not target_url:
+    if not sheet_url:
         raise HTTPException(
             status_code=400,
-            detail="No Google Sheet URL or Webhook configured for your school. Please configure it in Sheet Settings."
+            detail="No Google Sheet URL or Webhook found. Please click 'Sheet Settings' and paste your link first."
         )
 
     try:
-        result = sync_from_google_sheet(db, target_url, school_id=school_id)
+        result = sync_from_google_sheet(db, sheet_url)
         return result
-    except ValueError as val_err:
-        raise HTTPException(status_code=400, detail=str(val_err))
     except Exception as err:
-        raise HTTPException(status_code=500, detail=f"Sync failed: {err}")
+        raise HTTPException(status_code=400, detail=f"Spreadsheet sync failed: {str(err)}")
 
 
-# ── CSV Import & Export (Scoped by School) ───────────────────────
+@router.post("/webhook/sheet-sync")
+@router.get("/webhook/sheet-sync")
+def webhook_sheet_sync(db: Session = Depends(get_db)):
+    """
+    Public webhook endpoint callable by Google Apps Script onChange / onEdit trigger.
+    Whenever a row is added, edited, or deleted in the Google Sheet,
+    Google Apps Script pings this endpoint to instantly update CampusFlow's roster.
+    """
+    sheet_url = get_setting(db, "google_sheet_url", "") or get_setting(db, "google_sheet_webhook_url", "")
+    if not sheet_url:
+        return {"success": False, "message": "No sheet URL configured."}
+
+    try:
+        result = sync_from_google_sheet(db, sheet_url)
+        return {"success": True, "sync": result}
+    except Exception as err:
+        return {"success": False, "error": str(err)}
+
+
+@router.post("/admin/members/import-csv")
+async def import_csv_members(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Bulk import students from a CSV file.
+    """
+    require_admin(request)
+
+    content = await file.read()
+    text = content.decode("utf-8", errors="ignore")
+    reader = csv.DictReader(io.StringIO(text))
+
+    added = 0
+    for row in reader:
+        row_clean = {k.strip().lower(): (v.strip() if v else "") for k, v in row.items() if k}
+        cid = row_clean.get("college_id") or row_clean.get("id") or row_clean.get("student_id") or row_clean.get("roll_no")
+        name = row_clean.get("name") or row_clean.get("full_name") or row_clean.get("student_name")
+        dept = row_clean.get("department") or row_clean.get("dept") or row_clean.get("branch") or "General"
+        email = row_clean.get("email") or ""
+        role = row_clean.get("role") or "student"
+
+        if cid and name:
+            add_or_update_member(db, college_id=cid, name=name, department=dept, email=email, role=role)
+            added += 1
+
+    return {"success": True, "message": f"Successfully imported {added} members from CSV."}
+
 
 @router.get("/admin/members/export-csv")
-def export_members_csv(request: Request, db: Session = Depends(get_db)):
-    """Export the school's members roster as a downloadable CSV."""
-    payload = require_admin(request)
-    school_id = payload.get("school_id") or 1
-    members = get_all_members(db, school_id=school_id)
+def export_csv_members(request: Request, db: Session = Depends(get_db)):
+    """
+    Export all campus members as a downloadable CSV.
+    """
+    require_admin(request)
+    members = get_all_members(db)
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["College ID", "Name", "Department", "Role", "Email"])
+    writer.writerow(["College ID", "Full Name", "Department", "Role", "Email", "Date Added"])
 
     for m in members:
         writer.writerow([
             m.college_id,
             m.name,
-            m.department or "General",
+            m.department or "",
             m.role or "student",
-            m.email or ""
+            m.email or "",
+            m.created_at.strftime("%Y-%m-%d") if m.created_at else ""
         ])
 
     csv_data = output.getvalue()
     return Response(
         content=csv_data,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=campus_roster_school_{school_id}.csv"}
+        headers={"Content-Disposition": "attachment; filename=campus_members_roster.csv"}
     )
-
-
-@router.post("/admin/members/import-csv")
-async def import_members_csv(
-    file: UploadFile = File(...),
-    request: Request = None,
-    db: Session = Depends(get_db)
-):
-    """Upload and bulk import members for the school via CSV."""
-    payload = require_admin(request)
-    school_id = payload.get("school_id") or 1
-
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Please upload a valid .csv file.")
-
-    content = await file.read()
-    try:
-        text = content.decode("utf-8-sig", errors="replace")
-        reader = csv.DictReader(io.StringIO(text))
-        imported_count = 0
-        for row in reader:
-            normalized = {k.strip().lower().replace(" ", "").replace("_", ""): v.strip() for k, v in row.items() if k}
-            cid = normalized.get("collegeid") or normalized.get("studentid") or normalized.get("id")
-            name = normalized.get("name") or normalized.get("fullname")
-            if cid and name:
-                dept = normalized.get("department") or normalized.get("dept") or "General"
-                email = normalized.get("email") or ""
-                role = normalized.get("role") or "student"
-                add_or_update_member(db, cid, name, dept, email, role, school_id=school_id)
-                imported_count += 1
-
-        return {
-            "success": True,
-            "message": f"Successfully imported {imported_count} members.",
-            "count": imported_count
-        }
-    except Exception as err:
-        raise HTTPException(status_code=400, detail=f"Failed to parse CSV: {err}")
-
-
-# ── Webhook: Real-Time Auto Sync from Google Sheets ──────────────
-
-@router.post("/webhook/sheet-sync/{school_id}")
-@router.get("/webhook/sheet-sync/{school_id}")
-def webhook_sheet_sync(
-    school_id: int,
-    db: Session = Depends(get_db)
-):
-    """
-    Public webhook endpoint callable by Google Apps Script onChange / onEdit trigger.
-    Whenever a row is added, edited, or deleted in the Google Sheet,
-    Google Apps Script pings this endpoint to instantly update CampusFlow's roster.
-    """
-    cfg = get_school_spreadsheet_config(db, school_id=school_id)
-    target_url = cfg.get("google_sheet_url") or cfg.get("google_sheet_webhook_url")
-    if not target_url:
-        return {"success": False, "message": f"No sheet URL configured for school {school_id}"}
-
-    try:
-        result = sync_from_google_sheet(db, target_url, school_id=school_id)
-        return {"success": True, "school_id": school_id, "sync": result}
-    except Exception as err:
-        return {"success": False, "error": str(err)}

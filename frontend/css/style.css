@@ -2115,3 +2115,11 @@ html, body {
 .dot-high { background-color: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.25); }
 .dot-medium { background-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.25); }
 .dot-low { background-color: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.25); }
+.toast-message {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #0f172a !important;
+  line-height: 1.4;
+  word-break: break-word;
+}

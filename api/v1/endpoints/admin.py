@@ -1,13 +1,17 @@
 import os
 import secrets
+import io
+import csv
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import select, or_
 from pydantic import BaseModel
 from core.database import get_db
 from core.security import verify_password, create_access_token, decode_access_token
 from models.user import User
-from models.school import School
+from models.ticket import Ticket
 from services.ticket_service import get_all_tickets
 
 router = APIRouter()
@@ -19,9 +23,9 @@ class AdminLoginRequest(BaseModel):
 @router.post("/admin/login")
 def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
     """
-    Authenticate administrator credentials:
-    1. Check against DB 'users' table (supports multi-school admin accounts)
-    2. Check against environment variables (ADMIN_USERNAME / ADMIN_PASSWORD)
+    Authenticate administrator credentials against:
+    1. Environment variables set on Vercel/system (ADMIN_USERNAME / ADMIN_PASSWORD)
+    2. Database 'users' table where user_type is 'admin'
     """
     clean_username = (data.username or "").strip()
     clean_password = (data.password or "").strip()
@@ -32,7 +36,28 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
             detail="Admin username and password are required."
         )
 
-    # 1. Authenticate against Neon Database (User table where user_type == 'admin')
+    # 1. Authenticate against Environment Variables (configured in Vercel or .env)
+    env_admin_user = (os.getenv("ADMIN_USERNAME") or "admin").strip().strip('"\'')
+    env_admin_pass = (os.getenv("ADMIN_PASSWORD") or "admin123").strip().strip('"\'')
+
+    if env_admin_pass:
+        is_user_match = secrets.compare_digest(clean_username.lower(), env_admin_user.lower())
+        is_pass_match = secrets.compare_digest(clean_password, env_admin_pass)
+        if is_user_match and is_pass_match:
+            token = create_access_token({
+                "sub": env_admin_user,
+                "name": "Administrator",
+                "role": "admin",
+                "user_type": "admin"
+            })
+            return {
+                "message": "Admin authentication successful",
+                "token": token,
+                "username": env_admin_user,
+                "role": "admin"
+            }
+
+    # 2. Authenticate against Database (User table where user_type == 'admin')
     try:
         user = db.scalars(
             select(User).where(
@@ -46,30 +71,19 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
 
         if user and verify_password(clean_password, user.password_hash):
             user_role = (user.user_type or "").strip().lower()
-            if user_role in ["admin", "administrator", "staff", "superadmin", "school_admin"]:
-                school_id = getattr(user, "school_id", 1) or 1
-                school = db.scalar(select(School).where(School.id == school_id))
-                school_name = school.name if school else "Main Campus"
-                school_code = school.code if school else "DEFAULT"
-
+            if user_role in ["admin", "administrator", "staff", "superadmin"]:
                 token = create_access_token({
                     "sub": user.college_id,
                     "name": user.name,
                     "email": user.email,
                     "role": "admin",
-                    "user_type": "admin",
-                    "school_id": school_id,
-                    "school_name": school_name,
-                    "school_code": school_code
+                    "user_type": "admin"
                 })
                 return {
                     "message": "Admin authentication successful",
                     "token": token,
                     "username": user.name or user.college_id,
-                    "role": "admin",
-                    "school_id": school_id,
-                    "school_name": school_name,
-                    "school_code": school_code
+                    "role": "admin"
                 }
             else:
                 raise HTTPException(
@@ -81,36 +95,6 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
     except Exception as db_err:
         print(f"Database lookup during admin login failed: {db_err}")
 
-    # 2. Authenticate against Environment Variables (fallback default master)
-    env_admin_user = (os.getenv("ADMIN_USERNAME") or "admin").strip().strip('"\'')
-    env_admin_pass = (os.getenv("ADMIN_PASSWORD") or "admin123").strip().strip('"\'')
-
-    if env_admin_pass:
-        is_user_match = secrets.compare_digest(clean_username.lower(), env_admin_user.lower())
-        is_pass_match = secrets.compare_digest(clean_password, env_admin_pass)
-        if is_user_match and is_pass_match:
-            default_school = db.scalar(select(School).where(School.id == 1))
-            school_name = default_school.name if default_school else "Main Campus"
-            school_code = default_school.code if default_school else "DEFAULT"
-            token = create_access_token({
-                "sub": env_admin_user,
-                "name": "Administrator",
-                "role": "admin",
-                "user_type": "admin",
-                "school_id": 1,
-                "school_name": school_name,
-                "school_code": school_code
-            })
-            return {
-                "message": "Admin authentication successful",
-                "token": token,
-                "username": env_admin_user,
-                "role": "admin",
-                "school_id": 1,
-                "school_name": school_name,
-                "school_code": school_code
-            }
-
     # 3. Reject invalid credentials with 401 Unauthorized
     raise HTTPException(
         status_code=401,
@@ -118,59 +102,48 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
     )
 
 @router.get("/admin/verify")
-def verify_admin_session(request: Request, db: Session = Depends(get_db)):
-    """Verify admin JWT session and return admin + school profile."""
+def verify_admin_session(request: Request):
+    """
+    Verify that the current session token belongs to an authorized administrator.
+    """
     auth_header = request.headers.get("Authorization", "")
     token = None
     if auth_header.startswith("Bearer "):
         token = auth_header.replace("Bearer ", "").strip()
 
     if not token:
-        raise HTTPException(status_code=401, detail="Session expired or invalid token.")
+        raise HTTPException(status_code=401, detail="Missing admin authorization token.")
 
     payload = decode_access_token(token)
     if not payload or payload.get("role") != "admin":
-        raise HTTPException(status_code=401, detail="Session expired or invalid token.")
-
-    school_id = payload.get("school_id") or 1
-    school = db.scalar(select(School).where(School.id == school_id))
+        raise HTTPException(status_code=401, detail="Invalid or expired admin session token.")
 
     return {
         "status": "valid",
         "username": payload.get("sub", "Admin"),
-        "role": payload.get("role", "admin"),
-        "school_id": school_id,
-        "school_name": school.name if school else payload.get("school_name", "Main Campus"),
-        "school_code": school.code if school else payload.get("school_code", "DEFAULT")
+        "name": payload.get("name", "Administrator"),
+        "role": payload.get("role", "admin")
     }
 
 @router.get("/admin/feed")
 def get_admin_feed(request: Request, db: Session = Depends(get_db)):
-    """Public/Admin feed of recent complaints, filtered by school."""
-    auth_header = request.headers.get("Authorization", "")
-    school_id = None
-    if auth_header.startswith("Bearer "):
-        token = auth_header.replace("Bearer ", "").strip()
-        payload = decode_access_token(token)
-        if payload and payload.get("role") == "admin":
-            school_id = payload.get("school_id")
+    """All complaints feed for campus admin."""
+    return get_all_tickets(db)
 
-    # If no token, check query params
-    if not school_id and request.query_params.get("school_id"):
-        try:
-            school_id = int(request.query_params.get("school_id"))
-        except ValueError:
-            pass
-
-    return get_all_tickets(db, school_id=school_id)
-
+@router.get("/admin/stats")
+def get_admin_stats(db: Session = Depends(get_db)):
+    tickets = get_all_tickets(db)
+    resolved = sum(1 for t in tickets if (t.get("status") or "").lower() == "resolved")
+    pending = sum(1 for t in tickets if (t.get("status") or "").lower() != "resolved")
+    high_urgency = sum(1 for t in tickets if (t.get("urgency") or "").lower() == "high")
+    return {
+        "total": len(tickets),
+        "resolved": resolved,
+        "pending": pending,
+        "high_urgency": high_urgency
+    }
 
 # ── UGC / AICTE / NAAC Statutory Grievance Audit Report ─────────
-import io
-import csv
-from datetime import datetime, timezone, timedelta
-from fastapi.responses import Response
-from models.ticket import Ticket
 
 @router.get("/admin/compliance-report")
 def get_compliance_report(request: Request, db: Session = Depends(get_db)):
@@ -178,21 +151,12 @@ def get_compliance_report(request: Request, db: Session = Depends(get_db)):
     Generate real-time UGC / AICTE / NAAC statutory grievance compliance metrics.
     UGC Regulation requires colleges to address student grievances within 15 working days.
     """
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
-    payload = decode_access_token(token) if token else None
-
-    school_id = payload.get("school_id") or 1 if payload else 1
-    school = db.scalar(select(School).where(School.id == school_id))
-    school_name = school.name if school else "Main Campus"
-
-    tickets = db.scalars(select(Ticket).where(Ticket.school_id == school_id)).all()
+    tickets = db.scalars(select(Ticket)).all()
 
     total_count = len(tickets)
     resolved_tickets = [t for t in tickets if (t.status or "").lower() in ["resolved", "closed"]]
     pending_tickets = [t for t in tickets if (t.status or "").lower() not in ["resolved", "closed"]]
 
-    # UGC 15-day SLA compliance
     resolved_within_15_days = 0
     total_resolution_days = 0
 
@@ -203,16 +167,14 @@ def get_compliance_report(request: Request, db: Session = Depends(get_db)):
             if delta <= 15.0:
                 resolved_within_15_days += 1
         else:
-            resolved_within_15_days += 1  # If no exact resolved_at, treated as resolved within standard period
+            resolved_within_15_days += 1
 
     sla_percentage = round((resolved_within_15_days / len(resolved_tickets) * 100), 1) if resolved_tickets else 100.0
     avg_turnaround_days = round(total_resolution_days / len(resolved_tickets), 1) if (resolved_tickets and total_resolution_days > 0) else 1.5
 
-    # Ratings
     rated = [t for t in tickets if t.rating and t.rating > 0]
     avg_rating = round(sum(t.rating for t in rated) / len(rated), 2) if rated else None
 
-    # Categories and Departments breakdown
     dept_map = {}
     cat_map = {}
     anti_ragging_count = 0
@@ -229,9 +191,9 @@ def get_compliance_report(request: Request, db: Session = Depends(get_db)):
             icc_count += 1
 
     return {
-        "school_id": school_id,
-        "school_name": school_name,
-        "school_code": school.code if school else "CAMPUS",
+        "school_id": 1,
+        "school_name": "Main Campus",
+        "school_code": "CAMPUS",
         "total_grievances": total_count,
         "resolved_count": len(resolved_tickets),
         "pending_count": len(pending_tickets),
@@ -248,25 +210,15 @@ def get_compliance_report(request: Request, db: Session = Depends(get_db)):
         "generated_at": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %I:%M %p IST")
     }
 
-
 @router.get("/admin/compliance-report/export")
 def export_compliance_report_csv(request: Request, db: Session = Depends(get_db)):
     """Export formatted CSV audit statement for NAAC & UGC compliance verification."""
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
-    payload = decode_access_token(token) if token else None
-
-    school_id = payload.get("school_id") or 1 if payload else 1
-    school = db.scalar(select(School).where(School.id == school_id))
-    school_name = school.name if school else "Main Campus"
-    school_code = school.code if school else "CAMPUS"
-
-    tickets = db.scalars(select(Ticket).where(Ticket.school_id == school_id).order_by(Ticket.id.desc())).all()
+    tickets = db.scalars(select(Ticket).order_by(Ticket.id.desc())).all()
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["NATIONAL ASSESSMENT AND ACCREDITATION COUNCIL (NAAC) & UGC AUDIT REPORT"])
-    writer.writerow([f"Institution: {school_name} ({school_code})"])
+    writer.writerow(["Institution: Main Campus (CAMPUS)"])
     writer.writerow([f"Generated on: {datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%Y-%m-%d %I:%M %p IST')}"])
     writer.writerow([])
     writer.writerow(["Ticket ID", "Category", "Department", "Urgency", "Status", "Date Submitted", "Date Resolved", "Turnaround (Days)", "UGC 15-Day SLA Met", "Anonymous", "Rating (1-5)"])
@@ -304,5 +256,5 @@ def export_compliance_report_csv(request: Request, db: Session = Depends(get_db)
     return Response(
         content=csv_data,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=NAAC_UGC_Grievance_Audit_{school_code}.csv"}
+        headers={"Content-Disposition": "attachment; filename=NAAC_UGC_Grievance_Audit_CAMPUS.csv"}
     )
